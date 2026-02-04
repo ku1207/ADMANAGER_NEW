@@ -143,7 +143,7 @@ export default function Page1() {
   const [adGroup, setAdGroup] = useState<string>('')
   const [startDate, setStartDate] = useState(getDefaultStartDate())
   const [endDate, setEndDate] = useState(getDefaultEndDate())
-  const [budgetVisible, setBudgetVisible] = useState(false)
+  const [budgetVisible, setBudgetVisible] = useState(true)
 
   // 필터 연동
   const showCampaign = media !== '' && media !== '종합'
@@ -203,18 +203,18 @@ export default function Page1() {
     }
   }, [])
 
-  // 일자별 상세 데이터
+  // 일자별 상세 데이터 (오름차순)
   const dailyData = useMemo(() => {
     const dates = getDatesInRange(startDate, endDate)
     return dates.map(date => ({
       date,
       ...generateDailyData(date),
-    })).reverse()
+    }))
   }, [startDate, endDate])
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 w-[80%]">
         {/* 페이지 제목 */}
         <h1 className="text-2xl font-bold text-gray-900">일자별 데이터</h1>
 
@@ -223,10 +223,10 @@ export default function Page1() {
           <div className="flex flex-wrap items-center gap-3">
             {/* 매체 드롭다운 */}
             <Select value={media} onValueChange={handleMediaChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-white">
                 <SelectValue placeholder="매체" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {MEDIA_OPTIONS.map(option => (
                   <SelectItem key={option} value={option}>{option}</SelectItem>
                 ))}
@@ -236,10 +236,10 @@ export default function Page1() {
             {/* 캠페인 드롭다운 */}
             {showCampaign && (
               <Select value={campaign} onValueChange={handleCampaignChange}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-white">
                   <SelectValue placeholder="캠페인" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {(CAMPAIGN_OPTIONS[media] || []).map(option => (
                     <SelectItem key={option} value={option}>{option}</SelectItem>
                   ))}
@@ -250,10 +250,10 @@ export default function Page1() {
             {/* 광고그룹 드롭다운 */}
             {showAdGroup && (
               <Select value={adGroup} onValueChange={setAdGroup}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-white">
                   <SelectValue placeholder="광고그룹" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {(ADGROUP_OPTIONS[campaign] || []).map(option => (
                     <SelectItem key={option} value={option}>{option}</SelectItem>
                   ))}
@@ -282,7 +282,7 @@ export default function Page1() {
             </div>
 
             {/* 검색 버튼 */}
-            <Button>검색</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">검색</Button>
           </div>
         </div>
 
@@ -309,14 +309,14 @@ export default function Page1() {
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="text-center font-semibold">구분</TableHead>
-                <TableHead className="text-right font-semibold">노출</TableHead>
-                <TableHead className="text-right font-semibold">클릭</TableHead>
-                <TableHead className="text-right font-semibold">CTR</TableHead>
-                <TableHead className="text-right font-semibold">광고비</TableHead>
-                <TableHead className="text-right font-semibold">CPC</TableHead>
-                <TableHead className="text-right font-semibold">전환수</TableHead>
-                <TableHead className="text-right font-semibold">CVR</TableHead>
-                <TableHead className="text-right font-semibold">CPA</TableHead>
+                <TableHead className="text-center font-semibold">노출</TableHead>
+                <TableHead className="text-center font-semibold">클릭</TableHead>
+                <TableHead className="text-center font-semibold">CTR</TableHead>
+                <TableHead className="text-center font-semibold">광고비</TableHead>
+                <TableHead className="text-center font-semibold">CPC</TableHead>
+                <TableHead className="text-center font-semibold">전환수</TableHead>
+                <TableHead className="text-center font-semibold">CVR</TableHead>
+                <TableHead className="text-center font-semibold">CPA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,14 +352,14 @@ export default function Page1() {
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="text-center font-semibold">일자</TableHead>
-                <TableHead className="text-right font-semibold">노출</TableHead>
-                <TableHead className="text-right font-semibold">클릭</TableHead>
-                <TableHead className="text-right font-semibold">CTR</TableHead>
-                <TableHead className="text-right font-semibold">광고비</TableHead>
-                <TableHead className="text-right font-semibold">CPC</TableHead>
-                <TableHead className="text-right font-semibold">전환수</TableHead>
-                <TableHead className="text-right font-semibold">CVR</TableHead>
-                <TableHead className="text-right font-semibold">CPA</TableHead>
+                <TableHead className="text-center font-semibold">노출</TableHead>
+                <TableHead className="text-center font-semibold">클릭</TableHead>
+                <TableHead className="text-center font-semibold">CTR</TableHead>
+                <TableHead className="text-center font-semibold">광고비</TableHead>
+                <TableHead className="text-center font-semibold">CPC</TableHead>
+                <TableHead className="text-center font-semibold">전환수</TableHead>
+                <TableHead className="text-center font-semibold">CVR</TableHead>
+                <TableHead className="text-center font-semibold">CPA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
