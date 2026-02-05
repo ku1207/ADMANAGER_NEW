@@ -332,7 +332,7 @@ export default function Page3() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      <div className="p-8 space-y-6 w-[85%] mx-auto">
+      <div className="p-8 space-y-6 w-[90%] mx-auto">
         {/* 페이지 제목 */}
         <h1 className="text-2xl font-bold text-[#202124] tracking-tight">광고주 관리</h1>
 
@@ -539,7 +539,7 @@ export default function Page3() {
           {/* 광고주 등록 탭 */}
           {activeTab === '광고주 등록' && (
             <div className="p-8">
-              <div className="max-w-xl mx-auto space-y-6">
+              <div className="max-w-xl space-y-6">
                 {/* 매체 선택 */}
                 <div className="space-y-3">
                   <label className="block text-sm font-semibold text-[#202124]">매체 선택</label>

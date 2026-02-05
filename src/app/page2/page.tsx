@@ -138,7 +138,7 @@ export default function Page2() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      <div className="p-8 space-y-6 w-[85%] mx-auto">
+      <div className="p-8 space-y-6 w-[90%] mx-auto">
         {/* 페이지 제목 */}
         <h1 className="text-2xl font-bold text-[#202124] tracking-tight">키워드별 데이터</h1>
 
