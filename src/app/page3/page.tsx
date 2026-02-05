@@ -9,30 +9,23 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui'
-import { RotateCw, Settings, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+import { RotateCw, Settings, Trash2, CheckCircle2, XCircle, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // 매체 목록
 const MEDIA_OPTIONS = [
-  '네이버 검색광고',
-  '네이버 쇼핑검색광고',
+  '네이버',
   '네이버 성과형 DA',
-  '카카오 키워드',
+  '카카오',
   '카카오 모먼트',
-  '구글 검색광고',
-  '구글 디스플레이광고',
+  '구글',
   '메타',
   '틱톡',
 ]
 
 // 매체별 필요 API 키 필드 정의
 const MEDIA_API_FIELDS: Record<string, { label: string; key: string; type?: string }[]> = {
-  '네이버 검색광고': [
-    { label: 'API Key', key: 'apiKey' },
-    { label: 'Secret Key', key: 'secretKey', type: 'password' },
-    { label: 'Customer ID', key: 'customerId' },
-  ],
-  '네이버 쇼핑검색광고': [
+  '네이버': [
     { label: 'API Key', key: 'apiKey' },
     { label: 'Secret Key', key: 'secretKey', type: 'password' },
     { label: 'Customer ID', key: 'customerId' },
@@ -42,7 +35,7 @@ const MEDIA_API_FIELDS: Record<string, { label: string; key: string; type?: stri
     { label: 'Secret Key', key: 'secretKey', type: 'password' },
     { label: 'Customer ID', key: 'customerId' },
   ],
-  '카카오 키워드': [
+  '카카오': [
     { label: 'API Key', key: 'apiKey' },
     { label: 'Ad Account ID', key: 'adAccountId' },
   ],
@@ -50,13 +43,7 @@ const MEDIA_API_FIELDS: Record<string, { label: string; key: string; type?: stri
     { label: 'API Key', key: 'apiKey' },
     { label: 'Ad Account ID', key: 'adAccountId' },
   ],
-  '구글 검색광고': [
-    { label: 'Client ID', key: 'clientId' },
-    { label: 'Client Secret', key: 'clientSecret', type: 'password' },
-    { label: 'Developer Token', key: 'developerToken' },
-    { label: 'Customer ID', key: 'customerId' },
-  ],
-  '구글 디스플레이광고': [
+  '구글': [
     { label: 'Client ID', key: 'clientId' },
     { label: 'Client Secret', key: 'clientSecret', type: 'password' },
     { label: 'Developer Token', key: 'developerToken' },
@@ -88,29 +75,29 @@ interface Advertiser {
 
 // 광고주 더미 데이터
 const INITIAL_ADVERTISER_DATA: Advertiser[] = [
-  { id: 'ADV-001', name: '헬스케어코리아', media: '네이버 검색광고', balance: 5200000, dailySpend: 320000, weeklySpend: 2240000, updatedAt: '2026-02-03 14:30', status: '정상 연동' },
-  { id: 'ADV-002', name: '뷰티플러스', media: '네이버 쇼핑검색광고', balance: 3800000, dailySpend: 280000, weeklySpend: 1960000, updatedAt: '2026-02-03 15:10', status: '정상 연동' },
-  { id: 'ADV-003', name: '스포츠마켓', media: '카카오 키워드', balance: 1200000, dailySpend: 150000, weeklySpend: 1050000, updatedAt: '2026-02-03 13:45', status: '연동 오류' },
-  { id: 'ADV-004', name: '푸드팩토리', media: '구글 검색광고', balance: 7500000, dailySpend: 450000, weeklySpend: 3150000, updatedAt: '2026-02-03 16:00', status: '정상 연동' },
+  { id: 'ADV-001', name: '헬스케어코리아', media: '네이버', balance: 5200000, dailySpend: 320000, weeklySpend: 2240000, updatedAt: '2026-02-03 14:30', status: '정상 연동' },
+  { id: 'ADV-002', name: '뷰티플러스', media: '네이버', balance: 3800000, dailySpend: 280000, weeklySpend: 1960000, updatedAt: '2026-02-03 15:10', status: '정상 연동' },
+  { id: 'ADV-003', name: '스포츠마켓', media: '카카오', balance: 1200000, dailySpend: 150000, weeklySpend: 1050000, updatedAt: '2026-02-03 13:45', status: '연동 오류' },
+  { id: 'ADV-004', name: '푸드팩토리', media: '구글', balance: 7500000, dailySpend: 450000, weeklySpend: 3150000, updatedAt: '2026-02-03 16:00', status: '정상 연동' },
   { id: 'ADV-005', name: '테크솔루션', media: '메타', balance: 2300000, dailySpend: 180000, weeklySpend: 1260000, updatedAt: '2026-02-03 12:20', status: '정상 연동' },
   { id: 'ADV-006', name: '패션하우스', media: '네이버 성과형 DA', balance: 4100000, dailySpend: 350000, weeklySpend: 2450000, updatedAt: '2026-02-03 11:55', status: '정상 연동' },
   { id: 'ADV-007', name: '에듀케이션랩', media: '카카오 모먼트', balance: 900000, dailySpend: 120000, weeklySpend: 840000, updatedAt: '2026-02-03 10:30', status: '연동 오류' },
-  { id: 'ADV-008', name: '트래블조이', media: '구글 디스플레이광고', balance: 6200000, dailySpend: 400000, weeklySpend: 2800000, updatedAt: '2026-02-03 09:15', status: '정상 연동' },
+  { id: 'ADV-008', name: '트래블조이', media: '구글', balance: 6200000, dailySpend: 400000, weeklySpend: 2800000, updatedAt: '2026-02-03 09:15', status: '정상 연동' },
   { id: 'ADV-009', name: '리빙스타일', media: '틱톡', balance: 1800000, dailySpend: 200000, weeklySpend: 1400000, updatedAt: '2026-02-03 14:00', status: '정상 연동' },
-  { id: 'ADV-010', name: '오토모빌', media: '네이버 검색광고', balance: 8900000, dailySpend: 520000, weeklySpend: 3640000, updatedAt: '2026-02-03 15:45', status: '정상 연동' },
-  { id: 'ADV-011', name: '펫프렌즈', media: '네이버 쇼핑검색광고', balance: 3200000, dailySpend: 250000, weeklySpend: 1750000, updatedAt: '2026-02-03 13:20', status: '연동 오류' },
-  { id: 'ADV-012', name: '키즈월드', media: '카카오 키워드', balance: 2700000, dailySpend: 190000, weeklySpend: 1330000, updatedAt: '2026-02-03 11:10', status: '정상 연동' },
-  { id: 'ADV-013', name: '홈인테리어', media: '구글 검색광고', balance: 4500000, dailySpend: 310000, weeklySpend: 2170000, updatedAt: '2026-02-03 16:30', status: '정상 연동' },
+  { id: 'ADV-010', name: '오토모빌', media: '네이버', balance: 8900000, dailySpend: 520000, weeklySpend: 3640000, updatedAt: '2026-02-03 15:45', status: '정상 연동' },
+  { id: 'ADV-011', name: '펫프렌즈', media: '네이버', balance: 3200000, dailySpend: 250000, weeklySpend: 1750000, updatedAt: '2026-02-03 13:20', status: '연동 오류' },
+  { id: 'ADV-012', name: '키즈월드', media: '카카오', balance: 2700000, dailySpend: 190000, weeklySpend: 1330000, updatedAt: '2026-02-03 11:10', status: '정상 연동' },
+  { id: 'ADV-013', name: '홈인테리어', media: '구글', balance: 4500000, dailySpend: 310000, weeklySpend: 2170000, updatedAt: '2026-02-03 16:30', status: '정상 연동' },
   { id: 'ADV-014', name: '디지털프로', media: '메타', balance: 1500000, dailySpend: 170000, weeklySpend: 1190000, updatedAt: '2026-02-03 10:00', status: '정상 연동' },
   { id: 'ADV-015', name: '그린라이프', media: '네이버 성과형 DA', balance: 5800000, dailySpend: 380000, weeklySpend: 2660000, updatedAt: '2026-02-03 14:50', status: '정상 연동' },
   { id: 'ADV-016', name: '뮤직스토어', media: '카카오 모먼트', balance: 2100000, dailySpend: 160000, weeklySpend: 1120000, updatedAt: '2026-02-03 12:40', status: '연동 오류' },
-  { id: 'ADV-017', name: '북클럽', media: '구글 디스플레이광고', balance: 800000, dailySpend: 95000, weeklySpend: 665000, updatedAt: '2026-02-03 09:50', status: '정상 연동' },
+  { id: 'ADV-017', name: '북클럽', media: '구글', balance: 800000, dailySpend: 95000, weeklySpend: 665000, updatedAt: '2026-02-03 09:50', status: '정상 연동' },
   { id: 'ADV-018', name: '카페드림', media: '틱톡', balance: 3400000, dailySpend: 270000, weeklySpend: 1890000, updatedAt: '2026-02-03 15:30', status: '정상 연동' },
-  { id: 'ADV-019', name: '웰니스케어', media: '네이버 검색광고', balance: 6700000, dailySpend: 430000, weeklySpend: 3010000, updatedAt: '2026-02-03 13:00', status: '정상 연동' },
-  { id: 'ADV-020', name: '스마트팜', media: '카카오 키워드', balance: 1100000, dailySpend: 130000, weeklySpend: 910000, updatedAt: '2026-02-03 11:30', status: '연동 오류' },
+  { id: 'ADV-019', name: '웰니스케어', media: '네이버', balance: 6700000, dailySpend: 430000, weeklySpend: 3010000, updatedAt: '2026-02-03 13:00', status: '정상 연동' },
+  { id: 'ADV-020', name: '스마트팜', media: '카카오', balance: 1100000, dailySpend: 130000, weeklySpend: 910000, updatedAt: '2026-02-03 11:30', status: '연동 오류' },
   { id: 'ADV-021', name: '클린에너지', media: '메타', balance: 4800000, dailySpend: 340000, weeklySpend: 2380000, updatedAt: '2026-02-03 16:15', status: '정상 연동' },
-  { id: 'ADV-022', name: '아트갤러리', media: '구글 검색광고', balance: 1900000, dailySpend: 145000, weeklySpend: 1015000, updatedAt: '2026-02-03 10:45', status: '정상 연동' },
-  { id: 'ADV-023', name: '헬스케어플러스', media: '네이버 쇼핑검색광고', balance: 7200000, dailySpend: 470000, weeklySpend: 3290000, updatedAt: '2026-02-03 14:15', status: '정상 연동' },
+  { id: 'ADV-022', name: '아트갤러리', media: '구글', balance: 1900000, dailySpend: 145000, weeklySpend: 1015000, updatedAt: '2026-02-03 10:45', status: '정상 연동' },
+  { id: 'ADV-023', name: '헬스케어플러스', media: '네이버', balance: 7200000, dailySpend: 470000, weeklySpend: 3290000, updatedAt: '2026-02-03 14:15', status: '정상 연동' },
 ]
 
 function calcEstimatedDays(balance: number, dailySpend: number): number {
@@ -152,6 +139,9 @@ export default function Page3() {
   const [regMedia, setRegMedia] = useState<string>('')
   const [regApiValues, setRegApiValues] = useState<Record<string, string>>({})
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
+
+  // 매체 도움말 툴팁 상태
+  const [showMediaTooltip, setShowMediaTooltip] = useState(false)
 
   const handleSearch = () => {
     if (searchKeyword.length > 0 && searchKeyword.length < 2) {
@@ -482,7 +472,35 @@ export default function Page3() {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <div className="inline-flex items-center gap-1.5 justify-center">
+                        매체
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowMediaTooltip(!showMediaTooltip)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-[#DADCE0] hover:bg-[#E8EAED] transition-colors"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5 text-[#5F6368]" />
+                          </button>
+                          {showMediaTooltip && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowMediaTooltip(false)}
+                              />
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-64 p-4 bg-[#202124] text-white text-xs rounded-xl shadow-lg">
+                                <div className="space-y-2">
+                                  <p><span className="font-semibold">네이버:</span> 네이버 검색광고 + 네이버 쇼핑검색광고</p>
+                                  <p><span className="font-semibold">카카오:</span> 카카오 검색광고</p>
+                                  <p><span className="font-semibold">구글:</span> 구글 검색광고 + 구글 디스플레이광고</p>
+                                </div>
+                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#202124] rotate-45" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">계정 잔액</TableHead>
