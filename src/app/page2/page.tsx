@@ -34,23 +34,23 @@ const ADGROUP_OPTIONS: Record<string, string[]> = {
   '구글 퍼포먼스': ['구글_퍼포먼스_A', '구글_퍼포먼스_B'],
 }
 
-// 키워드 더미 데이터 (매체 포함)
+// 키워드 더미 데이터 (매체, 캠페인, 광고그룹 포함)
 const KEYWORD_DATA = [
-  { media: '네이버 검색광고', keyword: '다이어트 보조제', impressions: 45200, clicks: 1580, cost: 632000, conversions: 47 },
-  { media: '네이버 검색광고', keyword: '프로틴 추천', impressions: 38700, clicks: 1320, cost: 528000, conversions: 39 },
-  { media: '네이버 검색광고', keyword: '헬스 보충제', impressions: 32100, clicks: 1090, cost: 436000, conversions: 33 },
-  { media: '네이버 검색광고', keyword: '운동 영양제', impressions: 28400, clicks: 965, cost: 386000, conversions: 29 },
-  { media: '네이버 검색광고', keyword: '체중감량', impressions: 52300, clicks: 1780, cost: 712000, conversions: 53 },
-  { media: '카카오 키워드', keyword: '단백질 쉐이크', impressions: 41600, clicks: 1415, cost: 566000, conversions: 42 },
-  { media: '카카오 키워드', keyword: '비타민 추천', impressions: 36900, clicks: 1255, cost: 502000, conversions: 38 },
-  { media: '카카오 키워드', keyword: '건강기능식품', impressions: 29800, clicks: 1015, cost: 406000, conversions: 30 },
-  { media: '카카오 키워드', keyword: '유산균 추천', impressions: 44100, clicks: 1500, cost: 600000, conversions: 45 },
-  { media: '카카오 키워드', keyword: '오메가3', impressions: 25600, clicks: 870, cost: 348000, conversions: 26 },
-  { media: '구글 검색광고', keyword: '콜라겐 추천', impressions: 33500, clicks: 1140, cost: 456000, conversions: 34 },
-  { media: '구글 검색광고', keyword: '루테인', impressions: 21200, clicks: 720, cost: 288000, conversions: 22 },
-  { media: '구글 검색광고', keyword: '밀크씨슬', impressions: 18900, clicks: 645, cost: 258000, conversions: 19 },
-  { media: '구글 검색광고', keyword: '홍삼 추천', impressions: 27300, clicks: 930, cost: 372000, conversions: 28 },
-  { media: '구글 검색광고', keyword: '글루타치온', impressions: 15700, clicks: 535, cost: 214000, conversions: 16 },
+  { media: '네이버 검색광고', campaign: '브랜드 캠페인', adGroup: '브랜드_핵심KW', keyword: '다이어트 보조제', impressions: 45200, clicks: 1580, cost: 632000, conversions: 47 },
+  { media: '네이버 검색광고', campaign: '브랜드 캠페인', adGroup: '브랜드_확장KW', keyword: '프로틴 추천', impressions: 38700, clicks: 1320, cost: 528000, conversions: 39 },
+  { media: '네이버 검색광고', campaign: '퍼포먼스 캠페인', adGroup: '퍼포먼스_전환', keyword: '헬스 보충제', impressions: 32100, clicks: 1090, cost: 436000, conversions: 33 },
+  { media: '네이버 검색광고', campaign: '퍼포먼스 캠페인', adGroup: '퍼포먼스_CPA', keyword: '운동 영양제', impressions: 28400, clicks: 965, cost: 386000, conversions: 29 },
+  { media: '네이버 검색광고', campaign: '시즌 캠페인', adGroup: '시즌_봄', keyword: '체중감량', impressions: 52300, clicks: 1780, cost: 712000, conversions: 53 },
+  { media: '카카오 키워드', campaign: '카카오 브랜드', adGroup: '카카오_핵심KW', keyword: '단백질 쉐이크', impressions: 41600, clicks: 1415, cost: 566000, conversions: 42 },
+  { media: '카카오 키워드', campaign: '카카오 브랜드', adGroup: '카카오_확장KW', keyword: '비타민 추천', impressions: 36900, clicks: 1255, cost: 502000, conversions: 38 },
+  { media: '카카오 키워드', campaign: '카카오 전환', adGroup: '카카오_전환_A', keyword: '건강기능식품', impressions: 29800, clicks: 1015, cost: 406000, conversions: 30 },
+  { media: '카카오 키워드', campaign: '카카오 전환', adGroup: '카카오_전환_B', keyword: '유산균 추천', impressions: 44100, clicks: 1500, cost: 600000, conversions: 45 },
+  { media: '카카오 키워드', campaign: '카카오 브랜드', adGroup: '카카오_핵심KW', keyword: '오메가3', impressions: 25600, clicks: 870, cost: 348000, conversions: 26 },
+  { media: '구글 검색광고', campaign: '구글 브랜드', adGroup: '구글_브랜드KW', keyword: '콜라겐 추천', impressions: 33500, clicks: 1140, cost: 456000, conversions: 34 },
+  { media: '구글 검색광고', campaign: '구글 퍼포먼스', adGroup: '구글_퍼포먼스_A', keyword: '루테인', impressions: 21200, clicks: 720, cost: 288000, conversions: 22 },
+  { media: '구글 검색광고', campaign: '구글 퍼포먼스', adGroup: '구글_퍼포먼스_B', keyword: '밀크씨슬', impressions: 18900, clicks: 645, cost: 258000, conversions: 19 },
+  { media: '구글 검색광고', campaign: '구글 브랜드', adGroup: '구글_브랜드KW', keyword: '홍삼 추천', impressions: 27300, clicks: 930, cost: 372000, conversions: 28 },
+  { media: '구글 검색광고', campaign: '구글 퍼포먼스', adGroup: '구글_퍼포먼스_A', keyword: '글루타치온', impressions: 15700, clicks: 535, cost: 214000, conversions: 16 },
 ]
 
 // 날짜 유틸리티
@@ -138,7 +138,7 @@ export default function Page2() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6 w-[80%] mx-auto">
+      <div className="p-6 space-y-6 w-[85%] mx-auto">
         {/* 페이지 제목 */}
         <h1 className="text-2xl font-bold text-gray-900">키워드별 데이터</h1>
 
@@ -250,6 +250,8 @@ export default function Page2() {
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="text-center font-semibold">매체</TableHead>
+                <TableHead className="text-center font-semibold">캠페인</TableHead>
+                <TableHead className="text-center font-semibold">광고그룹</TableHead>
                 <TableHead className="text-center font-semibold">키워드</TableHead>
                 <TableHead className="text-center font-semibold">노출</TableHead>
                 <TableHead className="text-center font-semibold">클릭</TableHead>
@@ -263,8 +265,10 @@ export default function Page2() {
             </TableHeader>
             <TableBody>
               {sortedKeywordData.map(row => (
-                <TableRow key={`${row.media}-${row.keyword}`}>
+                <TableRow key={`${row.media}-${row.campaign}-${row.adGroup}-${row.keyword}`}>
                   <TableCell className="text-center">{row.media}</TableCell>
+                  <TableCell className="text-center">{row.campaign}</TableCell>
+                  <TableCell className="text-center">{row.adGroup}</TableCell>
                   <TableCell className="text-center font-medium">{row.keyword}</TableCell>
                   <TableCell className="text-right">{row.impressions.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{row.clicks.toLocaleString()}</TableCell>
