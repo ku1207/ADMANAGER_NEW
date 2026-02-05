@@ -24,18 +24,89 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Gemini Style Design Tokens */
+  --background: #F8F9FA;
+  --foreground: #202124;
+  --card-background: #FFFFFF;
+
+  /* Primary Colors */
+  --primary: #1A73E8;
+  --primary-hover: #1557B0;
+  --primary-light: #E8F0FE;
+
+  /* Status Colors (Pastel) */
+  --success: #34A853;
+  --success-light: #E6F4EA;
+  --success-text: #137333;
+  --error: #EA4335;
+  --error-light: #FCE8E6;
+  --error-text: #C5221F;
+
+  /* Border & Dividers */
+  --border: #E8EAED;
+  --border-hover: #DADCE0;
+
+  /* Text Colors */
+  --text-primary: #202124;
+  --text-secondary: #5F6368;
+  --text-muted: #80868B;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --shadow-md: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  --shadow-lg: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 8px 16px 4px rgba(60, 64, 67, 0.15);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: 'Pretendard';
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* Gemini Style Components */
+@layer components {
+  /* Card with soft shadow */
+  .gemini-card {
+    @apply bg-white rounded-2xl;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+  }
+
+  /* Primary Button */
+  .gemini-btn-primary {
+    @apply bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 py-2.5 rounded-xl;
+    @apply transition-all duration-200 ease-out;
+    @apply hover:shadow-md active:scale-[0.98];
+  }
+
+  /* Outline Button */
+  .gemini-btn-outline {
+    @apply bg-white border border-[#DADCE0] text-[#1A73E8] font-medium px-6 py-2.5 rounded-xl;
+    @apply transition-all duration-200 ease-out;
+    @apply hover:bg-[#F8F9FA] hover:border-[#1A73E8] active:scale-[0.98];
+  }
+
+  /* Input Fields */
+  .gemini-input {
+    @apply bg-white border border-[#E8EAED] rounded-xl px-4 py-2.5;
+    @apply transition-all duration-200 ease-out;
+    @apply focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE] focus:outline-none;
+  }
+
+  /* Tab Active Indicator */
+  .gemini-tab-active {
+    @apply relative text-[#1A73E8] font-medium;
+  }
+  .gemini-tab-active::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 h-[3px] bg-[#1A73E8] rounded-full;
   }
 }

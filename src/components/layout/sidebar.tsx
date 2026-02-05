@@ -15,11 +15,11 @@ export function Sidebar() {
   ]
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-[230px] bg-white border-r border-gray-200 shadow-sm z-50">
+    <aside className="fixed left-0 top-0 h-full w-[230px] bg-white border-r border-[#E8EAED] z-50">
       <div className="p-6">
         {/* 로고 영역 */}
-        <div className="mb-12">
-          <Link href="/" className="text-xl font-bold text-gray-900">
+        <div className="mb-10">
+          <Link href="/" className="text-xl font-bold text-[#202124] tracking-tight">
             AD Manager
           </Link>
         </div>
@@ -34,13 +34,16 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors",
+                  "flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all duration-200",
                   isActive
-                    ? "bg-gray-900 text-white font-medium"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-[#E8F0FE] text-[#1A73E8] font-semibold"
+                    : "text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124]"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={cn(
+                  "h-5 w-5",
+                  isActive ? "text-[#1A73E8]" : "text-[#5F6368]"
+                )} />
                 {item.label}
               </Link>
             )

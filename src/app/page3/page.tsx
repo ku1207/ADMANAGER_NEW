@@ -5,13 +5,14 @@ import {
   Button,
   Checkbox,
   Input,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui'
-import { RotateCw, Settings, Trash2 } from 'lucide-react'
+import { RotateCw, Settings, Trash2, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// 매체 목록 (일자별 데이터 페이지와 동일)
+// 매체 목록
 const MEDIA_OPTIONS = [
   '네이버 검색광고',
   '네이버 쇼핑검색광고',
@@ -23,6 +24,54 @@ const MEDIA_OPTIONS = [
   '메타',
   '틱톡',
 ]
+
+// 매체별 필요 API 키 필드 정의
+const MEDIA_API_FIELDS: Record<string, { label: string; key: string; type?: string }[]> = {
+  '네이버 검색광고': [
+    { label: 'API Key', key: 'apiKey' },
+    { label: 'Secret Key', key: 'secretKey', type: 'password' },
+    { label: 'Customer ID', key: 'customerId' },
+  ],
+  '네이버 쇼핑검색광고': [
+    { label: 'API Key', key: 'apiKey' },
+    { label: 'Secret Key', key: 'secretKey', type: 'password' },
+    { label: 'Customer ID', key: 'customerId' },
+  ],
+  '네이버 성과형 DA': [
+    { label: 'API Key', key: 'apiKey' },
+    { label: 'Secret Key', key: 'secretKey', type: 'password' },
+    { label: 'Customer ID', key: 'customerId' },
+  ],
+  '카카오 키워드': [
+    { label: 'API Key', key: 'apiKey' },
+    { label: 'Ad Account ID', key: 'adAccountId' },
+  ],
+  '카카오 모먼트': [
+    { label: 'API Key', key: 'apiKey' },
+    { label: 'Ad Account ID', key: 'adAccountId' },
+  ],
+  '구글 검색광고': [
+    { label: 'Client ID', key: 'clientId' },
+    { label: 'Client Secret', key: 'clientSecret', type: 'password' },
+    { label: 'Developer Token', key: 'developerToken' },
+    { label: 'Customer ID', key: 'customerId' },
+  ],
+  '구글 디스플레이광고': [
+    { label: 'Client ID', key: 'clientId' },
+    { label: 'Client Secret', key: 'clientSecret', type: 'password' },
+    { label: 'Developer Token', key: 'developerToken' },
+    { label: 'Customer ID', key: 'customerId' },
+  ],
+  '메타': [
+    { label: 'Access Token', key: 'accessToken', type: 'password' },
+    { label: 'Ad Account ID', key: 'adAccountId' },
+  ],
+  '틱톡': [
+    { label: 'Access Token', key: 'accessToken', type: 'password' },
+    { label: 'App ID', key: 'appId' },
+    { label: 'Advertiser ID', key: 'advertiserId' },
+  ],
+}
 
 type AdvertiserStatus = '정상 연동' | '연동 오류'
 
@@ -37,7 +86,7 @@ interface Advertiser {
   status: AdvertiserStatus
 }
 
-// 광고주 더미 데이터 (매체, 상태 포함)
+// 광고주 더미 데이터
 const INITIAL_ADVERTISER_DATA: Advertiser[] = [
   { id: 'ADV-001', name: '헬스케어코리아', media: '네이버 검색광고', balance: 5200000, dailySpend: 320000, weeklySpend: 2240000, updatedAt: '2026-02-03 14:30', status: '정상 연동' },
   { id: 'ADV-002', name: '뷰티플러스', media: '네이버 쇼핑검색광고', balance: 3800000, dailySpend: 280000, weeklySpend: 1960000, updatedAt: '2026-02-03 15:10', status: '정상 연동' },
@@ -85,7 +134,8 @@ function getCurrentTime(): string {
 
 const ITEMS_PER_PAGE = 10
 
-type TabType = '광고주 목록' | '계정 잔액 확인'
+type TabType = '광고주 목록' | '계정 잔액 확인' | '광고주 등록'
+type TestStatus = 'idle' | 'testing' | 'success' | 'error'
 
 export default function Page3() {
   const [activeTab, setActiveTab] = useState<TabType>('광고주 목록')
@@ -97,6 +147,11 @@ export default function Page3() {
   const [advertiserData, setAdvertiserData] = useState<Advertiser[]>(INITIAL_ADVERTISER_DATA)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [settingsTargetId, setSettingsTargetId] = useState<string | null>(null)
+
+  // 광고주 등록 탭 상태
+  const [regMedia, setRegMedia] = useState<string>('')
+  const [regApiValues, setRegApiValues] = useState<Record<string, string>>({})
+  const [testStatus, setTestStatus] = useState<TestStatus>('idle')
 
   const handleSearch = () => {
     if (searchKeyword.length > 0 && searchKeyword.length < 2) {
@@ -119,6 +174,12 @@ export default function Page3() {
     setActiveTab(tab)
     setCurrentPage(1)
     setSelectedIds(new Set())
+    // 탭 변경 시 등록 폼 초기화
+    if (tab === '광고주 등록') {
+      setRegMedia('')
+      setRegApiValues({})
+      setTestStatus('idle')
+    }
   }
 
   // 검색 필터링된 데이터
@@ -201,16 +262,42 @@ export default function Page3() {
     ? advertiserData.find(item => item.id === settingsTargetId)
     : null
 
+  // 매체 변경 핸들러 (등록 탭)
+  const handleRegMediaChange = (value: string) => {
+    setRegMedia(value)
+    setRegApiValues({})
+    setTestStatus('idle')
+  }
+
+  // API 값 변경 핸들러
+  const handleApiValueChange = (key: string, value: string) => {
+    setRegApiValues(prev => ({ ...prev, [key]: value }))
+    setTestStatus('idle')
+  }
+
+  // 연결 테스트 핸들러
+  const handleTest = () => {
+    if (!regMedia) return
+    setTestStatus('testing')
+
+    // 시뮬레이션: 1.5초 후 무작위 결과
+    setTimeout(() => {
+      const isSuccess = Math.random() > 0.3
+      setTestStatus(isSuccess ? 'success' : 'error')
+    }, 1500)
+  }
+
   // 페이지네이션 컴포넌트
   const renderPagination = () => {
     if (totalPages <= 1) return null
     return (
-      <div className="flex items-center justify-center gap-2 py-4 border-t border-gray-200">
+      <div className="flex items-center justify-center gap-2 py-6 border-t border-[#E8EAED]">
         <Button
           variant="outline"
           size="sm"
           disabled={currentPage === 1}
           onClick={() => setCurrentPage(prev => prev - 1)}
+          className="rounded-xl border-[#DADCE0] hover:bg-[#F8F9FA] transition-all duration-200"
         >
           이전
         </Button>
@@ -220,7 +307,10 @@ export default function Page3() {
             variant="outline"
             size="sm"
             className={cn(
-              page === currentPage && 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600'
+              "rounded-xl transition-all duration-200",
+              page === currentPage
+                ? 'bg-[#1A73E8] text-white hover:bg-[#1557B0] border-[#1A73E8]'
+                : 'border-[#DADCE0] hover:bg-[#F8F9FA]'
             )}
             onClick={() => setCurrentPage(page)}
           >
@@ -232,6 +322,7 @@ export default function Page3() {
           size="sm"
           disabled={currentPage === totalPages}
           onClick={() => setCurrentPage(prev => prev + 1)}
+          className="rounded-xl border-[#DADCE0] hover:bg-[#F8F9FA] transition-all duration-200"
         >
           다음
         </Button>
@@ -240,214 +331,321 @@ export default function Page3() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6 w-[85%] mx-auto">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <div className="p-8 space-y-6 w-[85%] mx-auto">
         {/* 페이지 제목 */}
-        <h1 className="text-2xl font-bold text-gray-900">광고주 관리</h1>
+        <h1 className="text-2xl font-bold text-[#202124] tracking-tight">광고주 관리</h1>
 
         {/* 탭 영역 */}
-        <div className="border-b border-gray-200">
-          <nav className="flex">
-            {(['광고주 목록', '계정 잔액 확인'] as TabType[]).map(tab => (
+        <div className="bg-white rounded-2xl shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+          <nav className="flex border-b border-[#E8EAED]">
+            {(['광고주 목록', '계정 잔액 확인', '광고주 등록'] as TabType[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
                 className={cn(
-                  "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
+                  "relative px-6 py-4 text-sm font-medium transition-all duration-200",
                   activeTab === tab
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "text-[#1A73E8]"
+                    : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F8F9FA]"
                 )}
               >
                 {tab}
+                {activeTab === tab && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#1A73E8] rounded-full" />
+                )}
               </button>
             ))}
           </nav>
-        </div>
 
-        {/* 필터 설정 영역 (공유) */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 max-w-md">
-              <Input
-                type="text"
-                placeholder="광고주명이나 광고주 ID를 입력해 주세요."
-                value={searchKeyword}
-                onChange={(e) => {
-                  setSearchKeyword(e.target.value)
-                  if (searchError) setSearchError('')
-                }}
-                onKeyDown={handleKeyDown}
-              />
-              {searchError && (
-                <p className="mt-1 text-sm text-red-500">{searchError}</p>
-              )}
+          {/* 필터 설정 영역 (광고주 목록, 계정 잔액 확인 탭에서만 표시) */}
+          {(activeTab === '광고주 목록' || activeTab === '계정 잔액 확인') && (
+            <div className="p-6 border-b border-[#E8EAED]">
+              <div className="flex items-center gap-4">
+                <div className="flex-1 max-w-md">
+                  <Input
+                    type="text"
+                    placeholder="광고주명이나 광고주 ID를 입력해 주세요."
+                    value={searchKeyword}
+                    onChange={(e) => {
+                      setSearchKeyword(e.target.value)
+                      if (searchError) setSearchError('')
+                    }}
+                    onKeyDown={handleKeyDown}
+                    className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+                  />
+                  {searchError && (
+                    <p className="mt-2 text-sm text-[#EA4335]">{searchError}</p>
+                  )}
+                </div>
+                <Button
+                  className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                  onClick={handleSearch}
+                >
+                  검색
+                </Button>
+              </div>
             </div>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={handleSearch}
-            >
-              검색
-            </Button>
-          </div>
-        </div>
+          )}
 
-        {/* 광고주 목록 탭 */}
-        {activeTab === '광고주 목록' && (
-          <div className="bg-white rounded-lg border border-gray-200">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="text-center font-semibold">매체</TableHead>
-                  <TableHead className="text-center font-semibold">광고주명</TableHead>
-                  <TableHead className="text-center font-semibold">광고주 ID</TableHead>
-                  <TableHead className="text-center font-semibold">현 상태</TableHead>
-                  <TableHead className="text-center font-semibold">관리</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.map(row => (
-                  <TableRow key={row.id}>
-                    <TableCell className="text-center">{row.media}</TableCell>
-                    <TableCell className="text-center font-medium">{row.name}</TableCell>
-                    <TableCell className="text-center">{row.id}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "inline-block w-2.5 h-2.5 rounded-full",
-                            row.status === '정상 연동' ? 'bg-green-500' : 'bg-red-500'
-                          )}
-                        />
-                        <span className={cn(
-                          "text-sm",
-                          row.status === '정상 연동' ? 'text-green-700' : 'text-red-700'
-                        )}>
-                          {row.status}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          onClick={() => setSettingsTargetId(row.id)}
-                          className="inline-flex items-center justify-center p-1.5 rounded hover:bg-gray-100 transition-colors"
-                          title="설정"
-                        >
-                          <Settings className="h-4 w-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTargetId(row.id)}
-                          className="inline-flex items-center justify-center p-1.5 rounded hover:bg-red-50 transition-colors"
-                          title="삭제"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </button>
-                      </div>
-                    </TableCell>
+          {/* 광고주 목록 탭 */}
+          {activeTab === '광고주 목록' && (
+            <div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">현 상태</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">관리</TableHead>
                   </TableRow>
-                ))}
-                {paginatedData.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      검색 결과가 없습니다.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            {renderPagination()}
-          </div>
-        )}
-
-        {/* 계정 잔액 확인 탭 */}
-        {activeTab === '계정 잔액 확인' && (
-          <div className="bg-white rounded-lg border border-gray-200">
-            {/* 테이블 상단 버튼 영역 */}
-            <div className="flex justify-end p-4 pb-0">
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={handleBulkRefresh}
-                disabled={selectedIds.size === 0}
-              >
-                예산 새로고침
-              </Button>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((row, index) => (
+                    <TableRow
+                      key={row.id}
+                      className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                    >
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "inline-block w-2.5 h-2.5 rounded-full",
+                              row.status === '정상 연동' ? 'bg-[#34A853]' : 'bg-[#EA4335]'
+                            )}
+                          />
+                          <span className={cn(
+                            "text-sm",
+                            row.status === '정상 연동' ? 'text-[#137333]' : 'text-[#C5221F]'
+                          )}>
+                            {row.status}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => setSettingsTargetId(row.id)}
+                            className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+                            title="설정"
+                          >
+                            <Settings className="h-4 w-4 text-[#5F6368]" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTargetId(row.id)}
+                            className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#FCE8E6] transition-all duration-200"
+                            title="삭제"
+                          >
+                            <Trash2 className="h-4 w-4 text-[#EA4335]" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-12 text-[#5F6368]">
+                        검색 결과가 없습니다.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              {renderPagination()}
             </div>
+          )}
 
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="text-center w-[50px]">
-                    <Checkbox
-                      checked={allPageSelected}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead className="text-center font-semibold">매체</TableHead>
-                  <TableHead className="text-center font-semibold">광고주명</TableHead>
-                  <TableHead className="text-center font-semibold">광고주 ID</TableHead>
-                  <TableHead className="text-center font-semibold">계정 잔액</TableHead>
-                  <TableHead className="text-center font-semibold">전일 집행비</TableHead>
-                  <TableHead className="text-center font-semibold">최근 7일 집행비</TableHead>
-                  <TableHead className="text-center font-semibold">예상 소진일</TableHead>
-                  <TableHead className="text-center font-semibold">업데이트 시간</TableHead>
-                  <TableHead className="text-center font-semibold w-[60px]">새로고침</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.map(row => (
-                  <TableRow key={row.id}>
-                    <TableCell className="text-center">
+          {/* 계정 잔액 확인 탭 */}
+          {activeTab === '계정 잔액 확인' && (
+            <div>
+              {/* 예산 새로고침 버튼 - 테이블과 간격 추가 */}
+              <div className="flex justify-end px-6 py-4">
+                <Button
+                  className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                  onClick={handleBulkRefresh}
+                  disabled={selectedIds.size === 0}
+                >
+                  예산 새로고침
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                    <TableHead className="text-center w-[50px]">
                       <Checkbox
-                        checked={selectedIds.has(row.id)}
-                        onCheckedChange={() => toggleSelect(row.id)}
+                        checked={allPageSelected}
+                        onCheckedChange={toggleSelectAll}
                       />
-                    </TableCell>
-                    <TableCell className="text-center">{row.media}</TableCell>
-                    <TableCell className="text-center font-medium">{row.name}</TableCell>
-                    <TableCell className="text-center">{row.id}</TableCell>
-                    <TableCell className="text-right">{row.balance.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{row.dailySpend.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{row.weeklySpend.toLocaleString()}</TableCell>
-                    <TableCell className="text-center">{calcEstimatedDays(row.balance, row.dailySpend)}일</TableCell>
-                    <TableCell className="text-center">{row.updatedAt}</TableCell>
-                    <TableCell className="text-center">
-                      <button
-                        onClick={() => handleRefresh(row.id)}
-                        className="inline-flex items-center justify-center p-1 rounded hover:bg-gray-100 transition-colors"
-                      >
-                        <RotateCw className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">계정 잔액</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">전일 집행비</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">최근 7일 집행비</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">예상 소진일</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">업데이트 시간</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124] w-[60px]">새로고침</TableHead>
                   </TableRow>
-                ))}
-                {paginatedData.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                      검색 결과가 없습니다.
-                    </TableCell>
-                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((row, index) => (
+                    <TableRow
+                      key={row.id}
+                      className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                    >
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={selectedIds.has(row.id)}
+                          onCheckedChange={() => toggleSelect(row.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-right text-[#5F6368]">{row.balance.toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-[#5F6368]">{row.dailySpend.toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-[#5F6368]">{row.weeklySpend.toLocaleString()}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{calcEstimatedDays(row.balance, row.dailySpend)}일</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.updatedAt}</TableCell>
+                      <TableCell className="text-center">
+                        <button
+                          onClick={() => handleRefresh(row.id)}
+                          className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+                        >
+                          <RotateCw className="h-4 w-4 text-[#5F6368]" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-12 text-[#5F6368]">
+                        검색 결과가 없습니다.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              {renderPagination()}
+            </div>
+          )}
+
+          {/* 광고주 등록 탭 */}
+          {activeTab === '광고주 등록' && (
+            <div className="p-8">
+              <div className="max-w-xl mx-auto space-y-6">
+                {/* 매체 선택 */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-[#202124]">매체 선택</label>
+                  <Select value={regMedia} onValueChange={handleRegMediaChange}>
+                    <SelectTrigger className="w-full bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
+                      <SelectValue placeholder="매체를 선택해 주세요." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
+                      {MEDIA_OPTIONS.map(option => (
+                        <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 매체별 API 키 입력 필드 */}
+                {regMedia && MEDIA_API_FIELDS[regMedia] && (
+                  <div className="space-y-4 pt-2">
+                    {MEDIA_API_FIELDS[regMedia].map(field => (
+                      <div key={field.key} className="space-y-2">
+                        <label className="block text-sm font-medium text-[#5F6368]">
+                          {field.label}
+                        </label>
+                        <Input
+                          type={field.type || 'text'}
+                          placeholder={`${field.label}를 입력해 주세요.`}
+                          value={regApiValues[field.key] || ''}
+                          onChange={(e) => handleApiValueChange(field.key, e.target.value)}
+                          className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-            {renderPagination()}
-          </div>
-        )}
+
+                {/* 테스트 버튼 */}
+                {regMedia && (
+                  <div className="pt-4">
+                    <Button
+                      onClick={handleTest}
+                      disabled={testStatus === 'testing'}
+                      className="w-full bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testStatus === 'testing' ? '연결 테스트 중...' : '테스트'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* 연결 테스트 결과 블록 */}
+                {testStatus !== 'idle' && testStatus !== 'testing' && (
+                  <div
+                    className={cn(
+                      "mt-6 p-6 rounded-2xl flex items-center gap-4",
+                      testStatus === 'success'
+                        ? "bg-[#E6F4EA] border border-[#34A853]"
+                        : "bg-[#FCE8E6] border border-[#EA4335]"
+                    )}
+                  >
+                    {testStatus === 'success' ? (
+                      <>
+                        <CheckCircle2 className="h-8 w-8 text-[#34A853] flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-[#137333]">연결 성공</p>
+                          <p className="text-sm text-[#137333] mt-1">
+                            API 연동이 정상적으로 확인되었습니다.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-8 w-8 text-[#EA4335] flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-[#C5221F]">연결 실패</p>
+                          <p className="text-sm text-[#C5221F] mt-1">
+                            입력하신 API 정보를 다시 확인해 주세요.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 삭제 확인 다이얼로그 */}
       <Dialog open={deleteTargetId !== null} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
-        <DialogContent className="bg-white">
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)]">
           <DialogHeader>
-            <DialogTitle>광고주 삭제</DialogTitle>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">광고주 삭제</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 py-4">정말 삭제하시겠습니까?</p>
-          <DialogFooter className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setDeleteTargetId(null)}>
+          <p className="text-sm text-[#5F6368] py-4">정말 삭제하시겠습니까?</p>
+          <DialogFooter className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTargetId(null)}
+              className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+            >
               아니오
             </Button>
             <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-[#EA4335] hover:bg-[#C5221F] text-white rounded-xl transition-all duration-200"
               onClick={handleDeleteConfirm}
             >
               네
@@ -458,38 +656,62 @@ export default function Page3() {
 
       {/* 설정 다이얼로그 */}
       <Dialog open={settingsTargetId !== null} onOpenChange={(open) => !open && setSettingsTargetId(null)}>
-        <DialogContent className="bg-white max-w-lg">
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-lg">
           <DialogHeader>
-            <DialogTitle>API 연동 설정 - {settingsTarget?.name}</DialogTitle>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">
+              API 연동 설정 - {settingsTarget?.name}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">매체</label>
-              <Input value={settingsTarget?.media || ''} readOnly className="bg-gray-50" />
+          <div className="space-y-5 py-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">매체</label>
+              <Input
+                value={settingsTarget?.media || ''}
+                readOnly
+                className="bg-[#F8F9FA] border-[#E8EAED] rounded-xl text-[#5F6368]"
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">광고주 ID</label>
-              <Input value={settingsTarget?.id || ''} readOnly className="bg-gray-50" />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">광고주 ID</label>
+              <Input
+                value={settingsTarget?.id || ''}
+                readOnly
+                className="bg-[#F8F9FA] border-[#E8EAED] rounded-xl text-[#5F6368]"
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-              <Input placeholder="API Key를 입력해 주세요." />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">API Key</label>
+              <Input
+                placeholder="API Key를 입력해 주세요."
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Secret Key</label>
-              <Input placeholder="Secret Key를 입력해 주세요." type="password" />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">Secret Key</label>
+              <Input
+                placeholder="Secret Key를 입력해 주세요."
+                type="password"
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
-              <Input placeholder="Customer ID를 입력해 주세요." />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">Customer ID</label>
+              <Input
+                placeholder="Customer ID를 입력해 주세요."
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
             </div>
           </div>
-          <DialogFooter className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setSettingsTargetId(null)}>
+          <DialogFooter className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setSettingsTargetId(null)}
+              className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+            >
               취소
             </Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200"
               onClick={() => setSettingsTargetId(null)}
             >
               저장
