@@ -137,22 +137,22 @@ export default function Page2() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6 w-[85%] mx-auto">
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <div className="p-8 space-y-6 w-[85%] mx-auto">
         {/* 페이지 제목 */}
-        <h1 className="text-2xl font-bold text-gray-900">키워드별 데이터</h1>
+        <h1 className="text-2xl font-bold text-[#202124] tracking-tight">키워드별 데이터</h1>
 
         {/* 필터 설정 영역 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="bg-white rounded-2xl p-6 shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
+          <div className="flex flex-wrap items-center gap-4">
             {/* 매체 드롭다운 */}
             <Select value={media} onValueChange={handleMediaChange}>
-              <SelectTrigger className="w-[180px] bg-white">
+              <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
                 <SelectValue placeholder="매체" />
               </SelectTrigger>
-              <SelectContent className="bg-white">
+              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
                 {MEDIA_OPTIONS.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                  <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -160,12 +160,12 @@ export default function Page2() {
             {/* 캠페인 드롭다운 */}
             {showCampaign && (
               <Select value={campaign} onValueChange={handleCampaignChange}>
-                <SelectTrigger className="w-[180px] bg-white">
+                <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
                   <SelectValue placeholder="캠페인" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
                   {(CAMPAIGN_OPTIONS[media] || []).map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -174,110 +174,115 @@ export default function Page2() {
             {/* 광고그룹 드롭다운 */}
             {showAdGroup && (
               <Select value={adGroup} onValueChange={setAdGroup}>
-                <SelectTrigger className="w-[180px] bg-white">
+                <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
                   <SelectValue placeholder="광고그룹" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
                   {(ADGROUP_OPTIONS[campaign] || []).map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                    <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
 
             {/* 구분선 */}
-            <div className="h-8 w-px bg-gray-200" />
+            <div className="h-10 w-px bg-[#E8EAED]" />
 
             {/* 조회 기간 (단일 날짜) */}
             <Input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-[150px]"
+              className="w-[150px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
             />
 
             {/* 검색 버튼 */}
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">검색</Button>
+            <Button className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]">
+              검색
+            </Button>
           </div>
         </div>
 
         {/* 기간별 합산 데이터 영역 */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="text-center font-semibold">구분</TableHead>
-                <TableHead className="text-center font-semibold">노출</TableHead>
-                <TableHead className="text-center font-semibold">클릭</TableHead>
-                <TableHead className="text-center font-semibold">CTR</TableHead>
-                <TableHead className="text-center font-semibold">광고비</TableHead>
-                <TableHead className="text-center font-semibold">CPC</TableHead>
-                <TableHead className="text-center font-semibold">전환수</TableHead>
-                <TableHead className="text-center font-semibold">CVR</TableHead>
-                <TableHead className="text-center font-semibold">CPA</TableHead>
+              <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                <TableHead className="text-center font-semibold text-[#202124]">구분</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">노출</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">클릭</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CTR</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">광고비</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CPC</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">전환수</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CVR</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CPA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell className="text-center font-medium">최근 7일</TableCell>
-                <TableCell className="text-right">{summaryData.last7.impressions.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{summaryData.last7.clicks.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCTR(summaryData.last7.impressions, summaryData.last7.clicks)}</TableCell>
-                <TableCell className="text-right">{summaryData.last7.cost.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCPC(summaryData.last7.cost, summaryData.last7.clicks)}</TableCell>
-                <TableCell className="text-right">{summaryData.last7.conversions.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCVR(summaryData.last7.conversions, summaryData.last7.clicks)}</TableCell>
-                <TableCell className="text-right">{calcCPA(summaryData.last7.cost, summaryData.last7.conversions)}</TableCell>
+              <TableRow className="border-b border-[#E8EAED] hover:bg-[#F8F9FA] transition-colors">
+                <TableCell className="text-center font-medium text-[#202124]">최근 7일</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.last7.impressions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.last7.clicks.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCTR(summaryData.last7.impressions, summaryData.last7.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.last7.cost.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCPC(summaryData.last7.cost, summaryData.last7.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.last7.conversions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCVR(summaryData.last7.conversions, summaryData.last7.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCPA(summaryData.last7.cost, summaryData.last7.conversions)}</TableCell>
               </TableRow>
-              <TableRow>
-                <TableCell className="text-center font-medium">전일</TableCell>
-                <TableCell className="text-right">{summaryData.yesterday.impressions.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{summaryData.yesterday.clicks.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCTR(summaryData.yesterday.impressions, summaryData.yesterday.clicks)}</TableCell>
-                <TableCell className="text-right">{summaryData.yesterday.cost.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCPC(summaryData.yesterday.cost, summaryData.yesterday.clicks)}</TableCell>
-                <TableCell className="text-right">{summaryData.yesterday.conversions.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{calcCVR(summaryData.yesterday.conversions, summaryData.yesterday.clicks)}</TableCell>
-                <TableCell className="text-right">{calcCPA(summaryData.yesterday.cost, summaryData.yesterday.conversions)}</TableCell>
+              <TableRow className="hover:bg-[#F8F9FA] transition-colors">
+                <TableCell className="text-center font-medium text-[#202124]">전일</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.yesterday.impressions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.yesterday.clicks.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCTR(summaryData.yesterday.impressions, summaryData.yesterday.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.yesterday.cost.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCPC(summaryData.yesterday.cost, summaryData.yesterday.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{summaryData.yesterday.conversions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCVR(summaryData.yesterday.conversions, summaryData.yesterday.clicks)}</TableCell>
+                <TableCell className="text-right text-[#5F6368]">{calcCPA(summaryData.yesterday.cost, summaryData.yesterday.conversions)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </div>
 
         {/* 키워드별 상세 데이터 영역 */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="text-center font-semibold">매체</TableHead>
-                <TableHead className="text-center font-semibold">캠페인</TableHead>
-                <TableHead className="text-center font-semibold">광고그룹</TableHead>
-                <TableHead className="text-center font-semibold">키워드</TableHead>
-                <TableHead className="text-center font-semibold">노출</TableHead>
-                <TableHead className="text-center font-semibold">클릭</TableHead>
-                <TableHead className="text-center font-semibold">CTR</TableHead>
-                <TableHead className="text-center font-semibold">광고비</TableHead>
-                <TableHead className="text-center font-semibold">CPC</TableHead>
-                <TableHead className="text-center font-semibold">전환수</TableHead>
-                <TableHead className="text-center font-semibold">CVR</TableHead>
-                <TableHead className="text-center font-semibold">CPA</TableHead>
+              <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">캠페인</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">광고그룹</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">키워드</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">노출</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">클릭</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CTR</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">광고비</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CPC</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">전환수</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CVR</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">CPA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedKeywordData.map(row => (
-                <TableRow key={`${row.media}-${row.campaign}-${row.adGroup}-${row.keyword}`}>
-                  <TableCell className="text-center">{row.media}</TableCell>
-                  <TableCell className="text-center">{row.campaign}</TableCell>
-                  <TableCell className="text-center">{row.adGroup}</TableCell>
-                  <TableCell className="text-center font-medium">{row.keyword}</TableCell>
-                  <TableCell className="text-right">{row.impressions.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{row.clicks.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{calcCTR(row.impressions, row.clicks)}</TableCell>
-                  <TableCell className="text-right">{row.cost.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{calcCPC(row.cost, row.clicks)}</TableCell>
-                  <TableCell className="text-right">{row.conversions.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{calcCVR(row.conversions, row.clicks)}</TableCell>
-                  <TableCell className="text-right">{calcCPA(row.cost, row.conversions)}</TableCell>
+              {sortedKeywordData.map((row, index) => (
+                <TableRow
+                  key={`${row.media}-${row.campaign}-${row.adGroup}-${row.keyword}`}
+                  className={`hover:bg-[#F8F9FA] transition-colors ${index < sortedKeywordData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                >
+                  <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
+                  <TableCell className="text-center text-[#5F6368]">{row.campaign}</TableCell>
+                  <TableCell className="text-center text-[#5F6368]">{row.adGroup}</TableCell>
+                  <TableCell className="text-center font-medium text-[#202124]">{row.keyword}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{row.impressions.toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{row.clicks.toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{calcCTR(row.impressions, row.clicks)}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{row.cost.toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{calcCPC(row.cost, row.clicks)}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{row.conversions.toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{calcCVR(row.conversions, row.clicks)}</TableCell>
+                  <TableCell className="text-right text-[#5F6368]">{calcCPA(row.cost, row.conversions)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
