@@ -214,7 +214,7 @@ export default function Page1() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6 w-[80%]">
+      <div className="p-6 space-y-6 w-[80%] mx-auto">
         {/* 페이지 제목 */}
         <h1 className="text-2xl font-bold text-gray-900">일자별 데이터</h1>
 
@@ -293,7 +293,7 @@ export default function Page1() {
               variant="outline"
               onClick={() => setBudgetVisible(true)}
             >
-              잔여 예산 조회
+              예산 새로고침
             </Button>
             {budgetVisible && (
               <span className="text-sm text-gray-700">
