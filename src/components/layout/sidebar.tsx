@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { CalendarDays, Search, Users } from 'lucide-react'
+import { CalendarDays, Search, Users, Bot } from 'lucide-react'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -12,6 +12,7 @@ export function Sidebar() {
     { href: '/page1', label: '일자별 데이터', icon: CalendarDays },
     { href: '/page2', label: '키워드별 데이터', icon: Search },
     { href: '/page3', label: '광고주 관리', icon: Users },
+    { href: '/page4', label: 'AI 자동화 센터', icon: Bot },
   ]
 
   return (

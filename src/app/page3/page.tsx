@@ -143,6 +143,9 @@ export default function Page3() {
   // 매체 도움말 툴팁 상태
   const [showMediaTooltip, setShowMediaTooltip] = useState(false)
 
+  // 설정 다이얼로그 테스트 상태
+  const [settingsTestStatus, setSettingsTestStatus] = useState<TestStatus>('idle')
+
   const handleSearch = () => {
     if (searchKeyword.length > 0 && searchKeyword.length < 2) {
       setSearchError('2글자 이상 입력해 주세요.')
@@ -251,6 +254,21 @@ export default function Page3() {
   const settingsTarget = settingsTargetId
     ? advertiserData.find(item => item.id === settingsTargetId)
     : null
+
+  // 설정 다이얼로그 테스트 핸들러
+  const handleSettingsTest = () => {
+    setSettingsTestStatus('testing')
+    setTimeout(() => {
+      const isSuccess = Math.random() > 0.3
+      setSettingsTestStatus(isSuccess ? 'success' : 'error')
+    }, 1500)
+  }
+
+  // 설정 다이얼로그 닫기 핸들러
+  const handleSettingsClose = () => {
+    setSettingsTargetId(null)
+    setSettingsTestStatus('idle')
+  }
 
   // 매체 변경 핸들러 (등록 탭)
   const handleRegMediaChange = (value: string) => {
@@ -384,9 +402,9 @@ export default function Page3() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
-                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">현 상태</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">관리</TableHead>
                   </TableRow>
@@ -397,9 +415,9 @@ export default function Page3() {
                       key={row.id}
                       className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
                     >
-                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
-                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
                       <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
                       <TableCell className="text-center">
                         <div className="inline-flex items-center gap-2">
                           <span
@@ -472,6 +490,8 @@ export default function Page3() {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">
                       <div className="inline-flex items-center gap-1.5 justify-center">
                         매체
@@ -501,8 +521,6 @@ export default function Page3() {
                         </div>
                       </div>
                     </TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">계정 잔액</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">전일 집행비</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">최근 7일 집행비</TableHead>
@@ -523,9 +541,9 @@ export default function Page3() {
                           onCheckedChange={() => toggleSelect(row.id)}
                         />
                       </TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
-                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
                       <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.balance.toLocaleString()}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.dailySpend.toLocaleString()}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.weeklySpend.toLocaleString()}</TableCell>
@@ -673,7 +691,7 @@ export default function Page3() {
       </Dialog>
 
       {/* 설정 다이얼로그 */}
-      <Dialog open={settingsTargetId !== null} onOpenChange={(open) => !open && setSettingsTargetId(null)}>
+      <Dialog open={settingsTargetId !== null} onOpenChange={(open) => !open && handleSettingsClose()}>
         <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-[#202124] text-lg font-semibold">
@@ -719,18 +737,57 @@ export default function Page3() {
                 className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
               />
             </div>
+
+            {/* 테스트 버튼 */}
+            <Button
+              onClick={handleSettingsTest}
+              disabled={settingsTestStatus === 'testing'}
+              className="w-full bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {settingsTestStatus === 'testing' ? '연결 테스트 중...' : '테스트'}
+            </Button>
+
+            {/* 연결 테스트 결과 블록 */}
+            {settingsTestStatus !== 'idle' && settingsTestStatus !== 'testing' && (
+              <div
+                className={cn(
+                  "p-4 rounded-xl flex items-center gap-3",
+                  settingsTestStatus === 'success'
+                    ? "bg-[#E6F4EA] border border-[#34A853]"
+                    : "bg-[#FCE8E6] border border-[#EA4335]"
+                )}
+              >
+                {settingsTestStatus === 'success' ? (
+                  <>
+                    <CheckCircle2 className="h-6 w-6 text-[#34A853] flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-[#137333] text-sm">연결 성공</p>
+                      <p className="text-xs text-[#137333]">API 연동이 정상적으로 확인되었습니다.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-6 w-6 text-[#EA4335] flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-[#C5221F] text-sm">연결 실패</p>
+                      <p className="text-xs text-[#C5221F]">입력하신 API 정보를 다시 확인해 주세요.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter className="flex gap-3 justify-end">
             <Button
               variant="outline"
-              onClick={() => setSettingsTargetId(null)}
+              onClick={handleSettingsClose}
               className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
             >
               취소
             </Button>
             <Button
               className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200"
-              onClick={() => setSettingsTargetId(null)}
+              onClick={handleSettingsClose}
             >
               저장
             </Button>
