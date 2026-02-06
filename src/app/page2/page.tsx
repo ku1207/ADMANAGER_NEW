@@ -1,38 +1,180 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Filter, ChevronLeft, ChevronRight, Search, Save } from 'lucide-react'
 import {
   Button,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Input,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Checkbox,
 } from '@/components/ui'
 
-// 매체 목록 (키워드 관련 매체만)
-const MEDIA_OPTIONS = [
-  '종합',
-  '네이버 검색광고',
-  '카카오 키워드',
-  '구글 검색광고',
+// 계정 더미 데이터
+const ACCOUNT_DATA = [
+  { id: 'ACC001', name: '홍길동 광고주', email: 'hong@example.com' },
+  { id: 'ACC002', name: '김철수 마케팅', email: 'kim@example.com' },
+  { id: 'ACC003', name: '이영희 컴퍼니', email: 'lee@example.com' },
+  { id: 'ACC004', name: '박지민 브랜드', email: 'park@example.com' },
+  { id: 'ACC005', name: '최수현 에이전시', email: 'choi@example.com' },
 ]
 
-// 캠페인 더미 데이터
-const CAMPAIGN_OPTIONS: Record<string, string[]> = {
-  '네이버 검색광고': ['브랜드 캠페인', '퍼포먼스 캠페인', '시즌 캠페인'],
-  '카카오 키워드': ['카카오 브랜드', '카카오 전환'],
-  '구글 검색광고': ['구글 브랜드', '구글 퍼포먼스'],
+// 매체 더미 데이터 (계정별) - 네이버 검색광고, 카카오 키워드, 구글 검색광고만
+const MEDIA_DATA: Record<string, { id: string; name: string }[]> = {
+  'ACC001': [
+    { id: 'MED001', name: '네이버 검색광고' },
+    { id: 'MED002', name: '카카오 키워드' },
+    { id: 'MED003', name: '구글 검색광고' },
+  ],
+  'ACC002': [
+    { id: 'MED004', name: '네이버 검색광고' },
+    { id: 'MED005', name: '카카오 키워드' },
+  ],
+  'ACC003': [
+    { id: 'MED006', name: '네이버 검색광고' },
+    { id: 'MED007', name: '구글 검색광고' },
+  ],
+  'ACC004': [
+    { id: 'MED008', name: '구글 검색광고' },
+    { id: 'MED009', name: '카카오 키워드' },
+  ],
+  'ACC005': [
+    { id: 'MED010', name: '네이버 검색광고' },
+    { id: 'MED011', name: '카카오 키워드' },
+    { id: 'MED012', name: '구글 검색광고' },
+  ],
 }
 
-// 광고그룹 더미 데이터
-const ADGROUP_OPTIONS: Record<string, string[]> = {
-  '브랜드 캠페인': ['브랜드_핵심KW', '브랜드_확장KW'],
-  '퍼포먼스 캠페인': ['퍼포먼스_전환', '퍼포먼스_CPA'],
-  '시즌 캠페인': ['시즌_봄', '시즌_여름'],
-  '카카오 브랜드': ['카카오_핵심KW', '카카오_확장KW'],
-  '카카오 전환': ['카카오_전환_A', '카카오_전환_B'],
-  '구글 브랜드': ['구글_브랜드KW'],
-  '구글 퍼포먼스': ['구글_퍼포먼스_A', '구글_퍼포먼스_B'],
+// 캠페인 더미 데이터 (매체별)
+const CAMPAIGN_DATA: Record<string, { id: string; name: string }[]> = {
+  'MED001': [
+    { id: 'CAM001', name: '브랜드 캠페인' },
+    { id: 'CAM002', name: '퍼포먼스 캠페인' },
+  ],
+  'MED002': [
+    { id: 'CAM003', name: '카카오 브랜드' },
+    { id: 'CAM004', name: '카카오 전환' },
+  ],
+  'MED003': [
+    { id: 'CAM005', name: '구글 브랜드' },
+    { id: 'CAM006', name: '구글 퍼포먼스' },
+  ],
+  'MED004': [
+    { id: 'CAM007', name: '시즌 캠페인' },
+    { id: 'CAM008', name: '이벤트 캠페인' },
+  ],
+  'MED005': [
+    { id: 'CAM009', name: '카카오 핵심' },
+  ],
+  'MED006': [
+    { id: 'CAM010', name: '네이버 메인' },
+  ],
+  'MED007': [
+    { id: 'CAM011', name: '구글 CPA' },
+  ],
+  'MED008': [
+    { id: 'CAM012', name: '구글 리타겟' },
+  ],
+  'MED009': [
+    { id: 'CAM013', name: '카카오 확장' },
+  ],
+  'MED010': [
+    { id: 'CAM014', name: '네이버 핵심KW' },
+    { id: 'CAM015', name: '네이버 확장KW' },
+  ],
+  'MED011': [
+    { id: 'CAM016', name: '카카오 전환A' },
+  ],
+  'MED012': [
+    { id: 'CAM017', name: '구글 검색A' },
+  ],
 }
+
+// 그룹 더미 데이터 (캠페인별)
+const GROUP_DATA: Record<string, { id: string; name: string }[]> = {
+  'CAM001': [
+    { id: 'GRP001', name: '브랜드_핵심KW' },
+    { id: 'GRP002', name: '브랜드_확장KW' },
+  ],
+  'CAM002': [
+    { id: 'GRP003', name: '퍼포먼스_전환' },
+    { id: 'GRP004', name: '퍼포먼스_CPA' },
+  ],
+  'CAM003': [
+    { id: 'GRP005', name: '카카오_핵심KW' },
+  ],
+  'CAM004': [
+    { id: 'GRP006', name: '카카오_전환_A' },
+    { id: 'GRP007', name: '카카오_전환_B' },
+  ],
+  'CAM005': [
+    { id: 'GRP008', name: '구글_브랜드KW' },
+  ],
+  'CAM006': [
+    { id: 'GRP009', name: '구글_퍼포먼스_A' },
+    { id: 'GRP010', name: '구글_퍼포먼스_B' },
+  ],
+  'CAM007': [
+    { id: 'GRP011', name: '시즌_봄' },
+    { id: 'GRP012', name: '시즌_여름' },
+  ],
+  'CAM008': [
+    { id: 'GRP013', name: '이벤트_A' },
+  ],
+  'CAM009': [
+    { id: 'GRP014', name: '카카오_핵심_A' },
+  ],
+  'CAM010': [
+    { id: 'GRP015', name: '네이버_메인_A' },
+  ],
+  'CAM011': [
+    { id: 'GRP016', name: '구글_CPA_A' },
+  ],
+  'CAM012': [
+    { id: 'GRP017', name: '구글_리타겟_A' },
+  ],
+  'CAM013': [
+    { id: 'GRP018', name: '카카오_확장_A' },
+  ],
+  'CAM014': [
+    { id: 'GRP019', name: '네이버_핵심_A' },
+  ],
+  'CAM015': [
+    { id: 'GRP020', name: '네이버_확장_A' },
+  ],
+  'CAM016': [
+    { id: 'GRP021', name: '카카오_전환A_1' },
+  ],
+  'CAM017': [
+    { id: 'GRP022', name: '구글_검색A_1' },
+  ],
+}
+
+// 저장된 필터 세트 더미 데이터
+interface SavedFilter {
+  id: string
+  name: string
+  accountMedias: string[]
+  campaigns: string[]
+  groups: string[]
+}
+
+const INITIAL_SAVED_FILTERS: SavedFilter[] = [
+  {
+    id: 'SF001',
+    name: '홍길동 네이버',
+    accountMedias: ['ACC001_MED001'],
+    campaigns: ['CAM001'],
+    groups: ['GRP001'],
+  },
+  {
+    id: 'SF002',
+    name: '김철수 카카오',
+    accountMedias: ['ACC002_MED005'],
+    campaigns: ['CAM009'],
+    groups: ['GRP014'],
+  },
+]
 
 // 키워드 더미 데이터 (매체, 캠페인, 광고그룹 포함)
 const KEYWORD_DATA = [
@@ -88,24 +230,299 @@ function calcCPA(cost: number, conversions: number): string {
   return Math.round(cost / conversions).toLocaleString()
 }
 
+type FilterTab = '계정&매체' | '캠페인' | '그룹'
+
 export default function Page2() {
-  const [media, setMedia] = useState<string>('')
-  const [campaign, setCampaign] = useState<string>('')
-  const [adGroup, setAdGroup] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState(getDefaultDate())
 
-  const showCampaign = media !== '' && media !== '종합'
-  const showAdGroup = showCampaign && campaign !== ''
+  // 필터 팝업 상태
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterApplied, setFilterApplied] = useState(false)
+  const [activeTab, setActiveTab] = useState<FilterTab>('계정&매체')
 
-  const handleMediaChange = (value: string) => {
-    setMedia(value)
-    setCampaign('')
-    setAdGroup('')
+  // 선택된 필터 값
+  const [selectedAccountMedias, setSelectedAccountMedias] = useState<string[]>([])
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+
+  // 임시 선택 상태 (팝업 내에서만 사용)
+  const [tempAccountMedias, setTempAccountMedias] = useState<string[]>([])
+  const [tempCampaigns, setTempCampaigns] = useState<string[]>([])
+  const [tempGroups, setTempGroups] = useState<string[]>([])
+
+  // 검색어
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // 페이지네이션
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 5
+
+  // 저장된 필터 세트
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(INITIAL_SAVED_FILTERS)
+  const [showSavedFilters, setShowSavedFilters] = useState(false)
+  const [saveFilterName, setSaveFilterName] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+
+  // 탭별 데이터 가져오기
+  const getTabData = () => {
+    switch (activeTab) {
+      case '계정&매체': {
+        // 계정&매체 탭: 계정 ID, 계정명, 매체 조합 반환
+        const accountMediaList: { id: string; accountId: string; accountName: string; mediaName: string }[] = []
+        ACCOUNT_DATA.forEach(acc => {
+          const medias = MEDIA_DATA[acc.id] || []
+          medias.forEach(m => {
+            accountMediaList.push({
+              id: `${acc.id}_${m.id}`,
+              accountId: acc.id,
+              accountName: acc.name,
+              mediaName: m.name,
+            })
+          })
+        })
+        return accountMediaList.map(item => ({
+          id: item.id,
+          col1: item.accountId,
+          col2: item.accountName,
+          col3: item.mediaName,
+        }))
+      }
+      case '캠페인': {
+        // 캠페인 탭: 캠페인, 계정 ID, 매체 반환
+        const campaignList: { id: string; col1: string; col2: string; col3: string }[] = []
+        tempAccountMedias.forEach(amId => {
+          const [accId, medId] = amId.split('_')
+          const campaigns = CAMPAIGN_DATA[medId] || []
+          campaigns.forEach(c => {
+            if (!campaignList.find(item => item.id === c.id)) {
+              // 매체 이름 찾기
+              let mediaName = ''
+              const medias = MEDIA_DATA[accId] || []
+              const found = medias.find(m => m.id === medId)
+              if (found) {
+                mediaName = found.name
+              }
+              campaignList.push({ id: c.id, col1: c.name, col2: accId, col3: mediaName })
+            }
+          })
+        })
+        return campaignList
+      }
+      case '그룹': {
+        const groupList: { id: string; col1: string; col2: string; col3: string }[] = []
+        tempCampaigns.forEach(camId => {
+          const groups = GROUP_DATA[camId] || []
+          groups.forEach(g => {
+            if (!groupList.find(item => item.id === g.id)) {
+              // 캠페인 이름 찾기
+              let campaignName = ''
+              for (const medId of Object.keys(CAMPAIGN_DATA)) {
+                const found = CAMPAIGN_DATA[medId].find(c => c.id === camId)
+                if (found) {
+                  campaignName = found.name
+                  break
+                }
+              }
+              groupList.push({ id: g.id, col1: g.name, col2: campaignName, col3: '' })
+            }
+          })
+        })
+        return groupList
+      }
+      default:
+        return []
+    }
   }
 
-  const handleCampaignChange = (value: string) => {
-    setCampaign(value)
-    setAdGroup('')
+  // 검색 필터링된 데이터
+  const filteredData = useMemo(() => {
+    const data = getTabData()
+    if (searchTerm.length < 2) return data
+    return data.filter(item =>
+      item.col1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.col2.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.col3 && item.col3.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  }, [activeTab, tempAccountMedias, tempCampaigns, searchTerm])
+
+  // 페이지네이션된 데이터
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [filteredData, currentPage])
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE)
+
+  // 현재 탭의 선택 상태 가져오기
+  const getCurrentSelection = () => {
+    switch (activeTab) {
+      case '계정&매체': return tempAccountMedias
+      case '캠페인': return tempCampaigns
+      case '그룹': return tempGroups
+      default: return []
+    }
+  }
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    const currentSelection = getCurrentSelection()
+    const currentData = getTabData()
+    const allIds = currentData.map(item => item.id)
+    const isAllSelected = allIds.length > 0 && allIds.every(id => currentSelection.includes(id))
+
+    switch (activeTab) {
+      case '계정&매체':
+        if (isAllSelected) {
+          setTempAccountMedias([])
+          setTempCampaigns([])
+          setTempGroups([])
+        } else {
+          setTempAccountMedias(allIds)
+        }
+        break
+      case '캠페인':
+        if (isAllSelected) {
+          setTempCampaigns([])
+          setTempGroups([])
+        } else {
+          setTempCampaigns(allIds)
+        }
+        break
+      case '그룹':
+        if (isAllSelected) {
+          setTempGroups([])
+        } else {
+          setTempGroups(allIds)
+        }
+        break
+    }
+  }
+
+  // 전체 선택 상태 확인
+  const isAllSelected = () => {
+    const currentSelection = getCurrentSelection()
+    const currentData = getTabData()
+    const allIds = currentData.map(item => item.id)
+    return allIds.length > 0 && allIds.every(id => currentSelection.includes(id))
+  }
+
+  // 항목 선택/해제
+  const handleItemToggle = (id: string) => {
+    const currentSelection = getCurrentSelection()
+    const isSelected = currentSelection.includes(id)
+
+    switch (activeTab) {
+      case '계정&매체':
+        if (isSelected) {
+          setTempAccountMedias(tempAccountMedias.filter(i => i !== id))
+          // 계정&매체 해제 시 하위 항목들도 초기화
+          setTempCampaigns([])
+          setTempGroups([])
+        } else {
+          setTempAccountMedias([...tempAccountMedias, id])
+        }
+        break
+      case '캠페인':
+        if (isSelected) {
+          setTempCampaigns(tempCampaigns.filter(i => i !== id))
+          // 캠페인 해제 시 하위 항목들도 초기화
+          setTempGroups([])
+        } else {
+          setTempCampaigns([...tempCampaigns, id])
+        }
+        break
+      case '그룹':
+        if (isSelected) {
+          setTempGroups(tempGroups.filter(i => i !== id))
+        } else {
+          setTempGroups([...tempGroups, id])
+        }
+        break
+    }
+  }
+
+  // 적용 버튼 활성화 여부
+  const canApply = () => {
+    switch (activeTab) {
+      case '계정&매체': return tempAccountMedias.length > 0
+      case '캠페인': return tempCampaigns.length > 0
+      case '그룹': return tempGroups.length > 0
+      default: return false
+    }
+  }
+
+  // 탭 이동 가능 여부
+  const canAccessTab = (tab: FilterTab) => {
+    switch (tab) {
+      case '계정&매체': return true
+      case '캠페인': return tempAccountMedias.length > 0
+      case '그룹': return tempCampaigns.length > 0
+      default: return false
+    }
+  }
+
+  // 필터 팝업 열기
+  const handleOpenFilter = () => {
+    setTempAccountMedias(selectedAccountMedias)
+    setTempCampaigns(selectedCampaigns)
+    setTempGroups(selectedGroups)
+    setSearchTerm('')
+    setCurrentPage(1)
+    setActiveTab('계정&매체')
+    setShowSavedFilters(false)
+    setFilterOpen(true)
+  }
+
+  // 적용 버튼 클릭
+  const handleApply = () => {
+    switch (activeTab) {
+      case '계정&매체':
+        setSelectedAccountMedias(tempAccountMedias)
+        // 다음 탭으로 이동
+        if (tempAccountMedias.length > 0) {
+          setActiveTab('캠페인')
+          setSearchTerm('')
+          setCurrentPage(1)
+        }
+        break
+      case '캠페인':
+        setSelectedCampaigns(tempCampaigns)
+        if (tempCampaigns.length > 0) {
+          setActiveTab('그룹')
+          setSearchTerm('')
+          setCurrentPage(1)
+        }
+        break
+      case '그룹':
+        setSelectedGroups(tempGroups)
+        setFilterApplied(true)
+        setFilterOpen(false)
+        break
+    }
+  }
+
+  // 저장된 필터 불러오기
+  const handleLoadFilter = (filter: SavedFilter) => {
+    setTempAccountMedias(filter.accountMedias)
+    setTempCampaigns(filter.campaigns)
+    setTempGroups(filter.groups)
+    setShowSavedFilters(false)
+  }
+
+  // 필터 저장
+  const handleSaveFilter = () => {
+    if (saveFilterName.trim().length < 2) return
+
+    const newFilter: SavedFilter = {
+      id: `SF${Date.now()}`,
+      name: saveFilterName.trim(),
+      accountMedias: tempAccountMedias,
+      campaigns: tempCampaigns,
+      groups: tempGroups,
+    }
+    setSavedFilters([...savedFilters, newFilter])
+    setSaveFilterName('')
+    setShowSaveDialog(false)
   }
 
   // 기간별 합산 데이터
@@ -136,6 +553,8 @@ export default function Page2() {
     return [...KEYWORD_DATA].sort((a, b) => b.cost - a.cost)
   }, [])
 
+  const FILTER_TABS: FilterTab[] = ['계정&매체', '캠페인', '그룹']
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       <div className="p-8 space-y-6 w-[90%] mx-auto">
@@ -145,45 +564,19 @@ export default function Page2() {
         {/* 필터 설정 영역 */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <div className="flex flex-wrap items-center gap-4">
-            {/* 매체 드롭다운 */}
-            <Select value={media} onValueChange={handleMediaChange}>
-              <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
-                <SelectValue placeholder="매체" />
-              </SelectTrigger>
-              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
-                {MEDIA_OPTIONS.map(option => (
-                  <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* 캠페인 드롭다운 */}
-            {showCampaign && (
-              <Select value={campaign} onValueChange={handleCampaignChange}>
-                <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
-                  <SelectValue placeholder="캠페인" />
-                </SelectTrigger>
-                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
-                  {(CAMPAIGN_OPTIONS[media] || []).map(option => (
-                    <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* 광고그룹 드롭다운 */}
-            {showAdGroup && (
-              <Select value={adGroup} onValueChange={setAdGroup}>
-                <SelectTrigger className="w-[180px] bg-white border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
-                  <SelectValue placeholder="광고그룹" />
-                </SelectTrigger>
-                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
-                  {(ADGROUP_OPTIONS[campaign] || []).map(option => (
-                    <SelectItem key={option} value={option} className="rounded-lg hover:bg-[#F8F9FA]">{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            {/* 필터 버튼 */}
+            <Button
+              onClick={handleOpenFilter}
+              className={`gap-2 px-5 rounded-xl transition-all duration-200 ${
+                filterApplied
+                  ? 'bg-[#E8F0FE] text-[#1A73E8] border-[#1A73E8] border hover:bg-[#D2E3FC]'
+                  : 'bg-white border-[#DADCE0] border text-[#5F6368] hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8]'
+              }`}
+              variant="outline"
+            >
+              <Filter className="h-4 w-4" />
+              {filterApplied ? '필터 적용됨' : '필터'}
+            </Button>
 
             {/* 구분선 */}
             <div className="h-10 w-px bg-[#E8EAED]" />
@@ -202,6 +595,250 @@ export default function Page2() {
             </Button>
           </div>
         </div>
+
+        {/* 필터 팝업 */}
+        <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+          <DialogContent className="max-w-2xl bg-white rounded-2xl p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 border-b border-[#E8EAED]">
+              <div className="flex items-center gap-4">
+                <DialogTitle className="text-lg font-semibold text-[#202124]">검색 방식</DialogTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSavedFilters(!showSavedFilters)}
+                  className="text-[#1A73E8] border-[#1A73E8] hover:bg-[#E8F0FE] rounded-lg"
+                >
+                  검색 기록 불러오기
+                </Button>
+              </div>
+            </DialogHeader>
+
+            {/* 저장된 필터 목록 */}
+            {showSavedFilters && (
+              <div className="px-6 py-4 bg-[#F8F9FA] border-b border-[#E8EAED]">
+                <p className="text-sm text-[#5F6368] mb-3">저장된 검색 기록</p>
+                <div className="flex flex-wrap gap-2">
+                  {savedFilters.map(filter => (
+                    <Button
+                      key={filter.id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLoadFilter(filter)}
+                      className="rounded-lg border-[#DADCE0] text-[#202124] hover:bg-white hover:border-[#1A73E8]"
+                    >
+                      {filter.name}
+                    </Button>
+                  ))}
+                  {savedFilters.length === 0 && (
+                    <p className="text-sm text-[#9AA0A6]">저장된 기록이 없습니다.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 탭 헤더 */}
+            <div className="flex border-b border-[#E8EAED]">
+              {FILTER_TABS.map((tab) => {
+                const isAccessible = canAccessTab(tab)
+                const isActive = activeTab === tab
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      if (isAccessible) {
+                        setActiveTab(tab)
+                        setSearchTerm('')
+                        setCurrentPage(1)
+                      }
+                    }}
+                    disabled={!isAccessible}
+                    className={`flex-1 py-3 text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'text-[#1A73E8] border-b-2 border-[#1A73E8]'
+                        : isAccessible
+                          ? 'text-[#5F6368] hover:text-[#202124] hover:bg-[#F8F9FA]'
+                          : 'text-[#DADCE0] cursor-not-allowed'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* 탭 컨텐츠 */}
+            <div className="p-6">
+              {/* 검색 입력 */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9AA0A6]" />
+                <Input
+                  type="text"
+                  placeholder="검색어를 입력하세요 (2글자 이상)"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="pl-10 border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+                />
+              </div>
+
+              {/* 데이터 테이블 */}
+              <div className="border border-[#E8EAED] rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                      <TableHead className="w-12 text-center">
+                        <Checkbox
+                          checked={isAllSelected()}
+                          onCheckedChange={handleSelectAll}
+                          className="border-[#DADCE0] data-[state=checked]:bg-[#1A73E8] data-[state=checked]:border-[#1A73E8]"
+                        />
+                      </TableHead>
+                      <TableHead className="font-semibold text-[#202124]">
+                        {activeTab === '계정&매체' ? '계정 ID' : activeTab === '캠페인' ? '캠페인' : '그룹'}
+                      </TableHead>
+                      <TableHead className="font-semibold text-[#202124]">
+                        {activeTab === '계정&매체' ? '계정명' : activeTab === '캠페인' ? '계정 ID' : '캠페인'}
+                      </TableHead>
+                      {activeTab !== '그룹' && (
+                        <TableHead className="font-semibold text-[#202124]">매체</TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.length > 0 ? (
+                      paginatedData.map((item, index) => {
+                        const isSelected = getCurrentSelection().includes(item.id)
+                        return (
+                          <TableRow
+                            key={item.id}
+                            className={`cursor-pointer transition-colors hover:bg-[#F8F9FA] ${
+                              index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''
+                            } ${isSelected ? 'bg-[#E8F0FE]' : ''}`}
+                            onClick={() => handleItemToggle(item.id)}
+                          >
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleItemToggle(item.id)}
+                                className="border-[#DADCE0] data-[state=checked]:bg-[#1A73E8] data-[state=checked]:border-[#1A73E8]"
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium text-[#202124]">{item.col1}</TableCell>
+                            <TableCell className="text-[#5F6368]">{item.col2}</TableCell>
+                            {activeTab !== '그룹' && (
+                              <TableCell className="text-[#5F6368]">{item.col3}</TableCell>
+                            )}
+                          </TableRow>
+                        )
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={activeTab === '그룹' ? 3 : 4} className="text-center py-8 text-[#9AA0A6]">
+                          {activeTab !== '계정&매체' && getCurrentSelection().length === 0
+                            ? '이전 단계에서 항목을 선택해주세요.'
+                            : searchTerm.length > 0 && searchTerm.length < 2
+                              ? '검색어는 2글자 이상 입력해주세요.'
+                              : '데이터가 없습니다.'}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 페이지네이션 */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-lg border-[#DADCE0] disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-[#5F6368]">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-lg border-[#DADCE0] disabled:opacity-50"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* 선택 정보 및 버튼 */}
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E8EAED]">
+                <span className="text-sm text-[#5F6368]">
+                  {getCurrentSelection().length}개 선택됨
+                </span>
+                <div className="flex items-center gap-3">
+                  {/* 그룹 탭에서만 검색기록 저장 버튼 표시 */}
+                  {activeTab === '그룹' && tempGroups.length > 0 && (
+                    <>
+                      {showSaveDialog ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            placeholder="필터명 입력 (2글자 이상)"
+                            value={saveFilterName}
+                            onChange={(e) => setSaveFilterName(e.target.value)}
+                            className="w-40 h-9 text-sm border-[#E8EAED] rounded-lg focus:border-[#1A73E8]"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSaveFilter}
+                            disabled={saveFilterName.trim().length < 2}
+                            className="rounded-lg border-[#1A73E8] text-[#1A73E8] hover:bg-[#E8F0FE] disabled:opacity-50"
+                          >
+                            저장
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowSaveDialog(false)
+                              setSaveFilterName('')
+                            }}
+                            className="rounded-lg border-[#DADCE0] text-[#5F6368]"
+                          >
+                            취소
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowSaveDialog(true)}
+                          className="gap-2 rounded-lg border-[#DADCE0] text-[#5F6368] hover:border-[#1A73E8] hover:text-[#1A73E8]"
+                        >
+                          <Save className="h-4 w-4" />
+                          검색기록 저장
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  <Button
+                    onClick={handleApply}
+                    disabled={!canApply()}
+                    className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    적용
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* 기간별 합산 데이터 영역 */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">

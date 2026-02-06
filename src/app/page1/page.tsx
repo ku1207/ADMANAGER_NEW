@@ -222,8 +222,7 @@ const GROUP_DATA: Record<string, { id: string; name: string }[]> = {
 interface SavedFilter {
   id: string
   name: string
-  accounts: string[]
-  medias: string[]
+  accountMedias: string[]
   campaigns: string[]
   groups: string[]
 }
@@ -232,16 +231,14 @@ const INITIAL_SAVED_FILTERS: SavedFilter[] = [
   {
     id: 'SF001',
     name: '홍길동 네이버',
-    accounts: ['ACC001'],
-    medias: ['MED001'],
+    accountMedias: ['ACC001_MED001'],
     campaigns: ['CAM001'],
     groups: ['GRP001'],
   },
   {
     id: 'SF002',
     name: '김철수 메타',
-    accounts: ['ACC002'],
-    medias: ['MED005'],
+    accountMedias: ['ACC002_MED005'],
     campaigns: ['CAM009'],
     groups: ['GRP013'],
   },
@@ -325,7 +322,7 @@ function getDatesInRange(start: string, end: string): string[] {
   return dates
 }
 
-type FilterTab = '계정' | '매체' | '캠페인' | '그룹'
+type FilterTab = '계정&매체' | '캠페인' | '그룹'
 
 export default function Page1() {
   const [startDate, setStartDate] = useState(getDefaultStartDate())
@@ -335,17 +332,15 @@ export default function Page1() {
   // 필터 팝업 상태
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterApplied, setFilterApplied] = useState(false)
-  const [activeTab, setActiveTab] = useState<FilterTab>('계정')
+  const [activeTab, setActiveTab] = useState<FilterTab>('계정&매체')
 
   // 선택된 필터 값
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
-  const [selectedMedias, setSelectedMedias] = useState<string[]>([])
+  const [selectedAccountMedias, setSelectedAccountMedias] = useState<string[]>([])
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
 
   // 임시 선택 상태 (팝업 내에서만 사용)
-  const [tempAccounts, setTempAccounts] = useState<string[]>([])
-  const [tempMedias, setTempMedias] = useState<string[]>([])
+  const [tempAccountMedias, setTempAccountMedias] = useState<string[]>([])
   const [tempCampaigns, setTempCampaigns] = useState<string[]>([])
   const [tempGroups, setTempGroups] = useState<string[]>([])
 
@@ -365,44 +360,50 @@ export default function Page1() {
   // 탭별 데이터 가져오기
   const getTabData = () => {
     switch (activeTab) {
-      case '계정':
-        return ACCOUNT_DATA.map(item => ({ id: item.id, name: item.name, subText: item.email }))
-      case '매체': {
-        const mediaList: { id: string; name: string; subText: string }[] = []
-        tempAccounts.forEach(accId => {
-          const medias = MEDIA_DATA[accId] || []
+      case '계정&매체': {
+        // 계정&매체 탭: 계정 ID, 계정명, 매체 조합 반환
+        const accountMediaList: { id: string; accountId: string; accountName: string; mediaName: string }[] = []
+        ACCOUNT_DATA.forEach(acc => {
+          const medias = MEDIA_DATA[acc.id] || []
           medias.forEach(m => {
-            if (!mediaList.find(item => item.id === m.id)) {
-              const account = ACCOUNT_DATA.find(a => a.id === accId)
-              mediaList.push({ id: m.id, name: m.name, subText: account?.name || '' })
-            }
+            accountMediaList.push({
+              id: `${acc.id}_${m.id}`,
+              accountId: acc.id,
+              accountName: acc.name,
+              mediaName: m.name,
+            })
           })
         })
-        return mediaList
+        return accountMediaList.map(item => ({
+          id: item.id,
+          col1: item.accountId,
+          col2: item.accountName,
+          col3: item.mediaName,
+        }))
       }
       case '캠페인': {
-        const campaignList: { id: string; name: string; subText: string }[] = []
-        tempMedias.forEach(medId => {
+        // 캠페인 탭: 캠페인, 계정 ID, 매체 반환
+        const campaignList: { id: string; col1: string; col2: string; col3: string }[] = []
+        tempAccountMedias.forEach(amId => {
+          const [accId, medId] = amId.split('_')
           const campaigns = CAMPAIGN_DATA[medId] || []
           campaigns.forEach(c => {
             if (!campaignList.find(item => item.id === c.id)) {
               // 매체 이름 찾기
               let mediaName = ''
-              for (const accId of Object.keys(MEDIA_DATA)) {
-                const found = MEDIA_DATA[accId].find(m => m.id === medId)
-                if (found) {
-                  mediaName = found.name
-                  break
-                }
+              const medias = MEDIA_DATA[accId] || []
+              const found = medias.find(m => m.id === medId)
+              if (found) {
+                mediaName = found.name
               }
-              campaignList.push({ id: c.id, name: c.name, subText: mediaName })
+              campaignList.push({ id: c.id, col1: c.name, col2: accId, col3: mediaName })
             }
           })
         })
         return campaignList
       }
       case '그룹': {
-        const groupList: { id: string; name: string; subText: string }[] = []
+        const groupList: { id: string; col1: string; col2: string; col3: string }[] = []
         tempCampaigns.forEach(camId => {
           const groups = GROUP_DATA[camId] || []
           groups.forEach(g => {
@@ -416,7 +417,7 @@ export default function Page1() {
                   break
                 }
               }
-              groupList.push({ id: g.id, name: g.name, subText: campaignName })
+              groupList.push({ id: g.id, col1: g.name, col2: campaignName, col3: '' })
             }
           })
         })
@@ -432,10 +433,11 @@ export default function Page1() {
     const data = getTabData()
     if (searchTerm.length < 2) return data
     return data.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.subText.toLowerCase().includes(searchTerm.toLowerCase())
+      item.col1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.col2.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.col3 && item.col3.toLowerCase().includes(searchTerm.toLowerCase()))
     )
-  }, [activeTab, tempAccounts, tempMedias, tempCampaigns, searchTerm])
+  }, [activeTab, tempAccountMedias, tempCampaigns, searchTerm])
 
   // 페이지네이션된 데이터
   const paginatedData = useMemo(() => {
@@ -448,12 +450,54 @@ export default function Page1() {
   // 현재 탭의 선택 상태 가져오기
   const getCurrentSelection = () => {
     switch (activeTab) {
-      case '계정': return tempAccounts
-      case '매체': return tempMedias
+      case '계정&매체': return tempAccountMedias
       case '캠페인': return tempCampaigns
       case '그룹': return tempGroups
       default: return []
     }
+  }
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    const currentSelection = getCurrentSelection()
+    const currentData = getTabData()
+    const allIds = currentData.map(item => item.id)
+    const isAllSelected = allIds.length > 0 && allIds.every(id => currentSelection.includes(id))
+
+    switch (activeTab) {
+      case '계정&매체':
+        if (isAllSelected) {
+          setTempAccountMedias([])
+          setTempCampaigns([])
+          setTempGroups([])
+        } else {
+          setTempAccountMedias(allIds)
+        }
+        break
+      case '캠페인':
+        if (isAllSelected) {
+          setTempCampaigns([])
+          setTempGroups([])
+        } else {
+          setTempCampaigns(allIds)
+        }
+        break
+      case '그룹':
+        if (isAllSelected) {
+          setTempGroups([])
+        } else {
+          setTempGroups(allIds)
+        }
+        break
+    }
+  }
+
+  // 전체 선택 상태 확인
+  const isAllSelected = () => {
+    const currentSelection = getCurrentSelection()
+    const currentData = getTabData()
+    const allIds = currentData.map(item => item.id)
+    return allIds.length > 0 && allIds.every(id => currentSelection.includes(id))
   }
 
   // 항목 선택/해제
@@ -462,25 +506,14 @@ export default function Page1() {
     const isSelected = currentSelection.includes(id)
 
     switch (activeTab) {
-      case '계정':
+      case '계정&매체':
         if (isSelected) {
-          setTempAccounts(tempAccounts.filter(i => i !== id))
-          // 계정 해제 시 하위 항목들도 초기화
-          setTempMedias([])
+          setTempAccountMedias(tempAccountMedias.filter(i => i !== id))
+          // 계정&매체 해제 시 하위 항목들도 초기화
           setTempCampaigns([])
           setTempGroups([])
         } else {
-          setTempAccounts([...tempAccounts, id])
-        }
-        break
-      case '매체':
-        if (isSelected) {
-          setTempMedias(tempMedias.filter(i => i !== id))
-          // 매체 해제 시 하위 항목들도 초기화
-          setTempCampaigns([])
-          setTempGroups([])
-        } else {
-          setTempMedias([...tempMedias, id])
+          setTempAccountMedias([...tempAccountMedias, id])
         }
         break
       case '캠페인':
@@ -505,8 +538,7 @@ export default function Page1() {
   // 적용 버튼 활성화 여부
   const canApply = () => {
     switch (activeTab) {
-      case '계정': return tempAccounts.length > 0
-      case '매체': return tempMedias.length > 0
+      case '계정&매체': return tempAccountMedias.length > 0
       case '캠페인': return tempCampaigns.length > 0
       case '그룹': return tempGroups.length > 0
       default: return false
@@ -516,9 +548,8 @@ export default function Page1() {
   // 탭 이동 가능 여부
   const canAccessTab = (tab: FilterTab) => {
     switch (tab) {
-      case '계정': return true
-      case '매체': return tempAccounts.length > 0
-      case '캠페인': return tempMedias.length > 0
+      case '계정&매체': return true
+      case '캠페인': return tempAccountMedias.length > 0
       case '그룹': return tempCampaigns.length > 0
       default: return false
     }
@@ -526,13 +557,12 @@ export default function Page1() {
 
   // 필터 팝업 열기
   const handleOpenFilter = () => {
-    setTempAccounts(selectedAccounts)
-    setTempMedias(selectedMedias)
+    setTempAccountMedias(selectedAccountMedias)
     setTempCampaigns(selectedCampaigns)
     setTempGroups(selectedGroups)
     setSearchTerm('')
     setCurrentPage(1)
-    setActiveTab('계정')
+    setActiveTab('계정&매체')
     setShowSavedFilters(false)
     setFilterOpen(true)
   }
@@ -540,18 +570,10 @@ export default function Page1() {
   // 적용 버튼 클릭
   const handleApply = () => {
     switch (activeTab) {
-      case '계정':
-        setSelectedAccounts(tempAccounts)
+      case '계정&매체':
+        setSelectedAccountMedias(tempAccountMedias)
         // 다음 탭으로 이동
-        if (tempAccounts.length > 0) {
-          setActiveTab('매체')
-          setSearchTerm('')
-          setCurrentPage(1)
-        }
-        break
-      case '매체':
-        setSelectedMedias(tempMedias)
-        if (tempMedias.length > 0) {
+        if (tempAccountMedias.length > 0) {
           setActiveTab('캠페인')
           setSearchTerm('')
           setCurrentPage(1)
@@ -575,8 +597,7 @@ export default function Page1() {
 
   // 저장된 필터 불러오기
   const handleLoadFilter = (filter: SavedFilter) => {
-    setTempAccounts(filter.accounts)
-    setTempMedias(filter.medias)
+    setTempAccountMedias(filter.accountMedias)
     setTempCampaigns(filter.campaigns)
     setTempGroups(filter.groups)
     setShowSavedFilters(false)
@@ -589,8 +610,7 @@ export default function Page1() {
     const newFilter: SavedFilter = {
       id: `SF${Date.now()}`,
       name: saveFilterName.trim(),
-      accounts: tempAccounts,
-      medias: tempMedias,
+      accountMedias: tempAccountMedias,
       campaigns: tempCampaigns,
       groups: tempGroups,
     }
@@ -601,21 +621,22 @@ export default function Page1() {
 
   // 잔액 계산
   const budgetAmount = useMemo(() => {
-    if (selectedMedias.length === 0) {
+    if (selectedAccountMedias.length === 0) {
       return Object.values(BUDGET_DATA).reduce((a, b) => a + b, 0)
     }
     let total = 0
-    selectedMedias.forEach(medId => {
-      // 매체 이름 찾기
-      for (const accId of Object.keys(MEDIA_DATA)) {
-        const found = MEDIA_DATA[accId].find(m => m.id === medId)
-        if (found && BUDGET_DATA[found.name]) {
-          total += BUDGET_DATA[found.name]
-        }
+    const addedMediaNames = new Set<string>()
+    selectedAccountMedias.forEach(amId => {
+      const [accId, medId] = amId.split('_')
+      const medias = MEDIA_DATA[accId] || []
+      const found = medias.find(m => m.id === medId)
+      if (found && BUDGET_DATA[found.name] && !addedMediaNames.has(found.name)) {
+        total += BUDGET_DATA[found.name]
+        addedMediaNames.add(found.name)
       }
     })
     return total || Object.values(BUDGET_DATA).reduce((a, b) => a + b, 0)
-  }, [selectedMedias])
+  }, [selectedAccountMedias])
 
   // 기간별 합산 데이터
   const summaryData = useMemo(() => {
@@ -661,7 +682,7 @@ export default function Page1() {
     }))
   }, [startDate, endDate])
 
-  const FILTER_TABS: FilterTab[] = ['계정', '매체', '캠페인', '그룹']
+  const FILTER_TABS: FilterTab[] = ['계정&매체', '캠페인', '그룹']
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -717,7 +738,7 @@ export default function Page1() {
         <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
           <DialogContent className="max-w-2xl bg-white rounded-2xl p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 border-b border-[#E8EAED]">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
                 <DialogTitle className="text-lg font-semibold text-[#202124]">검색 방식</DialogTitle>
                 <Button
                   variant="outline"
@@ -806,14 +827,21 @@ export default function Page1() {
                   <TableHeader>
                     <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
                       <TableHead className="w-12 text-center">
-                        <span className="sr-only">선택</span>
+                        <Checkbox
+                          checked={isAllSelected()}
+                          onCheckedChange={handleSelectAll}
+                          className="border-[#DADCE0] data-[state=checked]:bg-[#1A73E8] data-[state=checked]:border-[#1A73E8]"
+                        />
                       </TableHead>
                       <TableHead className="font-semibold text-[#202124]">
-                        {activeTab === '계정' ? '계정명' : activeTab === '매체' ? '매체명' : activeTab === '캠페인' ? '캠페인명' : '그룹명'}
+                        {activeTab === '계정&매체' ? '계정 ID' : activeTab === '캠페인' ? '캠페인' : '그룹'}
                       </TableHead>
                       <TableHead className="font-semibold text-[#202124]">
-                        {activeTab === '계정' ? '이메일' : activeTab === '매체' ? '계정' : activeTab === '캠페인' ? '매체' : '캠페인'}
+                        {activeTab === '계정&매체' ? '계정명' : activeTab === '캠페인' ? '계정 ID' : '캠페인'}
                       </TableHead>
+                      {activeTab !== '그룹' && (
+                        <TableHead className="font-semibold text-[#202124]">매체</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -835,15 +863,18 @@ export default function Page1() {
                                 className="border-[#DADCE0] data-[state=checked]:bg-[#1A73E8] data-[state=checked]:border-[#1A73E8]"
                               />
                             </TableCell>
-                            <TableCell className="font-medium text-[#202124]">{item.name}</TableCell>
-                            <TableCell className="text-[#5F6368]">{item.subText}</TableCell>
+                            <TableCell className="font-medium text-[#202124]">{item.col1}</TableCell>
+                            <TableCell className="text-[#5F6368]">{item.col2}</TableCell>
+                            {activeTab !== '그룹' && (
+                              <TableCell className="text-[#5F6368]">{item.col3}</TableCell>
+                            )}
                           </TableRow>
                         )
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-[#9AA0A6]">
-                          {activeTab !== '계정' && getCurrentSelection().length === 0
+                        <TableCell colSpan={activeTab === '그룹' ? 3 : 4} className="text-center py-8 text-[#9AA0A6]">
+                          {activeTab !== '계정&매체' && getCurrentSelection().length === 0
                             ? '이전 단계에서 항목을 선택해주세요.'
                             : searchTerm.length > 0 && searchTerm.length < 2
                               ? '검색어는 2글자 이상 입력해주세요.'
