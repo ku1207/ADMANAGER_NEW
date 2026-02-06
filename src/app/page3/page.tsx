@@ -402,9 +402,9 @@ export default function Page3() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
-                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">현 상태</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">관리</TableHead>
                   </TableRow>
@@ -415,9 +415,9 @@ export default function Page3() {
                       key={row.id}
                       className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
                     >
-                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
-                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
                       <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
                       <TableCell className="text-center">
                         <div className="inline-flex items-center gap-2">
                           <span
@@ -490,6 +490,8 @@ export default function Page3() {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">
                       <div className="inline-flex items-center gap-1.5 justify-center">
                         매체
@@ -519,8 +521,6 @@ export default function Page3() {
                         </div>
                       </div>
                     </TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">계정 잔액</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">전일 집행비</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">최근 7일 집행비</TableHead>
@@ -541,9 +541,9 @@ export default function Page3() {
                           onCheckedChange={() => toggleSelect(row.id)}
                         />
                       </TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
-                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
                       <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.balance.toLocaleString()}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.dailySpend.toLocaleString()}</TableCell>
                       <TableCell className="text-right text-[#5F6368]">{row.weeklySpend.toLocaleString()}</TableCell>
