@@ -4,13 +4,17 @@ import { useState } from 'react'
 import {
   Button,
   Input,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Card, CardContent,
 } from '@/components/ui'
-import { Mail, RefreshCw, Calendar, Link2, Copy, Send, Loader2, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Mail, RefreshCw, Calendar, Link2, Copy, Send, Loader2, FileText, AlertCircle, CheckCircle2, Plus, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TabType = '메일 AI' | '견적 AI' | '제작 AI' | '보고서 AI'
 type ToneType = '공손한' | '간결한' | '공식적인'
+type QuoteStatus = '진행중' | '완료' | '오류'
 
 interface EmailItem {
   id: string
@@ -23,6 +27,20 @@ interface EmailItem {
   advertiserId?: string
   requestSummary?: string
   missingDocs?: string[]
+}
+
+interface QuoteItem {
+  id: string
+  no: number
+  name: string
+  registeredAt: string
+  worker: string
+  status: QuoteStatus
+  keyword: string
+  media: string
+  criteria: string
+  pcBudget: number
+  mobileBudget: number
 }
 
 // 더미 메일 데이터
@@ -89,6 +107,49 @@ const DUMMY_EMAILS: EmailItem[] = [
   },
 ]
 
+// 견적 더미 데이터
+const INITIAL_QUOTE_DATA: QuoteItem[] = [
+  {
+    id: 'QT001',
+    no: 1,
+    name: '화장품 키워드',
+    registeredAt: '2026-02-05 14:30',
+    worker: 'admin',
+    status: '완료',
+    keyword: '화장품',
+    media: '네이버 검색광고',
+    criteria: '클릭 최대화',
+    pcBudget: 2000000,
+    mobileBudget: 3000000,
+  },
+  {
+    id: 'QT002',
+    no: 2,
+    name: '스포츠용품 키워드',
+    registeredAt: '2026-02-05 16:00',
+    worker: 'admin',
+    status: '진행중',
+    keyword: '스포츠용품',
+    media: '구글 검색광고',
+    criteria: '노출 최대화',
+    pcBudget: 1500000,
+    mobileBudget: 2500000,
+  },
+  {
+    id: 'QT003',
+    no: 3,
+    name: '건강식품 키워드',
+    registeredAt: '2026-02-06 09:00',
+    worker: 'admin',
+    status: '오류',
+    keyword: '건강식품',
+    media: '카카오 키워드',
+    criteria: '클릭 최대화',
+    pcBudget: 1000000,
+    mobileBudget: 1500000,
+  },
+]
+
 // 톤별 회신 템플릿
 const generateReplyTemplate = (email: EmailItem, tone: ToneType): string => {
   const missingDocsText = email.missingDocs && email.missingDocs.length > 0
@@ -132,6 +193,16 @@ AD Manager 운영팀 드림`
   }
 }
 
+function getCurrentDateTime(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const h = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${d} ${h}:${min}`
+}
+
 export default function Page4() {
   const [activeTab, setActiveTab] = useState<TabType>('메일 AI')
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
@@ -141,6 +212,19 @@ export default function Page4() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedReply, setGeneratedReply] = useState<string>('')
   const [copySuccess, setCopySuccess] = useState(false)
+
+  // 견적 AI 상태
+  const [quoteData, setQuoteData] = useState<QuoteItem[]>(INITIAL_QUOTE_DATA)
+  const [quoteRegisterOpen, setQuoteRegisterOpen] = useState(false)
+  const [quoteDetailOpen, setQuoteDetailOpen] = useState(false)
+  const [selectedQuote, setSelectedQuote] = useState<QuoteItem | null>(null)
+  const [newQuote, setNewQuote] = useState({
+    keyword: '',
+    media: '',
+    criteria: '',
+    pcBudget: '',
+    mobileBudget: '',
+  })
 
   const selectedEmail = DUMMY_EMAILS.find(e => e.id === selectedEmailId)
 
@@ -182,6 +266,40 @@ export default function Page4() {
     setSelectedEmailId(emailId)
     setGeneratedReply('')
     setIsGenerating(false)
+  }
+
+  // 견적 등록 핸들러
+  const handleQuoteSubmit = () => {
+    if (!newQuote.keyword || !newQuote.media || !newQuote.criteria) return
+
+    const newItem: QuoteItem = {
+      id: `QT${Date.now()}`,
+      no: quoteData.length + 1,
+      name: `${newQuote.keyword} 키워드`,
+      registeredAt: getCurrentDateTime(),
+      worker: 'admin',
+      status: '진행중',
+      keyword: newQuote.keyword,
+      media: newQuote.media,
+      criteria: newQuote.criteria,
+      pcBudget: parseInt(newQuote.pcBudget) || 0,
+      mobileBudget: parseInt(newQuote.mobileBudget) || 0,
+    }
+
+    setQuoteData([...quoteData, newItem])
+    setNewQuote({ keyword: '', media: '', criteria: '', pcBudget: '', mobileBudget: '' })
+    setQuoteRegisterOpen(false)
+  }
+
+  // 등록 상세 보기
+  const handleViewDetail = (quote: QuoteItem) => {
+    setSelectedQuote(quote)
+    setQuoteDetailOpen(true)
+  }
+
+  // 결과 다운로드
+  const handleDownload = (quote: QuoteItem) => {
+    alert(`${quote.name} 견적서를 다운로드합니다.`)
   }
 
   return (
@@ -295,145 +413,151 @@ export default function Page4() {
                   {selectedEmail ? (
                     <div className="space-y-6">
                       {/* 정보 추출 카드 */}
-                      <div className="bg-white rounded-2xl border border-[#E8EAED] p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-[#1A73E8]" />
-                          AI 정보 추출
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-[#80868B]">광고주명</p>
-                            <p className="text-sm font-medium text-[#202124] mt-1">
-                              {selectedEmail.advertiserName || '-'}
-                            </p>
+                      <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
+                        <CardContent className="p-6">
+                          <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-[#1A73E8]" />
+                            AI 정보 추출
+                          </h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-[#80868B]">광고주명</p>
+                              <p className="text-sm font-medium text-[#202124] mt-1">
+                                {selectedEmail.advertiserName || '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-[#80868B]">광고주 ID</p>
+                              <p className="text-sm font-medium text-[#202124] mt-1">
+                                {selectedEmail.advertiserId || '미등록 광고주'}
+                              </p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-xs text-[#80868B]">요청 핵심 요약</p>
+                              <p className="text-sm font-medium text-[#202124] mt-1">
+                                {selectedEmail.requestSummary || '-'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-[#80868B]">광고주 ID</p>
-                            <p className="text-sm font-medium text-[#202124] mt-1">
-                              {selectedEmail.advertiserId || '미등록 광고주'}
-                            </p>
-                          </div>
-                          <div className="col-span-2">
-                            <p className="text-xs text-[#80868B]">요청 핵심 요약</p>
-                            <p className="text-sm font-medium text-[#202124] mt-1">
-                              {selectedEmail.requestSummary || '-'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
 
                       {/* 누락 서류 체크 카드 */}
-                      <div className="bg-white rounded-2xl border border-[#E8EAED] p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-[#EA4335]" />
-                          누락 서류 체크
-                        </h3>
-                        {selectedEmail.missingDocs && selectedEmail.missingDocs.length > 0 ? (
-                          <div className="space-y-2">
-                            {selectedEmail.missingDocs.map(doc => (
-                              <div key={doc} className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-[#EA4335]" />
-                                <span className="text-sm text-[#EA4335] font-medium">{doc}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-[#34A853]" />
-                            <span className="text-sm text-[#34A853]">모든 필수 서류가 확인되었습니다.</span>
-                          </div>
-                        )}
-                      </div>
+                      <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
+                        <CardContent className="p-6">
+                          <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-[#EA4335]" />
+                            누락 서류 체크
+                          </h3>
+                          {selectedEmail.missingDocs && selectedEmail.missingDocs.length > 0 ? (
+                            <div className="space-y-2">
+                              {selectedEmail.missingDocs.map(doc => (
+                                <div key={doc} className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-[#EA4335]" />
+                                  <span className="text-sm text-[#EA4335] font-medium">{doc}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-[#34A853]" />
+                              <span className="text-sm text-[#34A853]">모든 필수 서류가 확인되었습니다.</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
 
                       {/* 회신 초안 생성 카드 */}
-                      <div className="bg-white rounded-2xl border border-[#E8EAED] p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-[#1A73E8]" />
-                          회신 초안 생성
-                        </h3>
+                      <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
+                        <CardContent className="p-6">
+                          <h3 className="text-sm font-semibold text-[#202124] mb-4 flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-[#1A73E8]" />
+                            회신 초안 생성
+                          </h3>
 
-                        {/* 톤앤매너 선택 */}
-                        <div className="flex items-center gap-3 mb-4">
-                          <span className="text-sm text-[#5F6368]">톤앤매너:</span>
-                          {(['공손한', '간결한', '공식적인'] as ToneType[]).map(tone => (
-                            <button
-                              key={tone}
-                              onClick={() => handleToneChange(tone)}
-                              className={cn(
-                                "px-4 py-2 text-sm rounded-xl transition-all duration-200",
-                                selectedTone === tone
-                                  ? "bg-[#1A73E8] text-white"
-                                  : "bg-[#F8F9FA] text-[#5F6368] hover:bg-[#E8EAED]"
-                              )}
-                            >
-                              {tone}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* 초안 생성 버튼 */}
-                        {!generatedReply && !isGenerating && (
-                          <Button
-                            onClick={handleGenerateReply}
-                            className="w-full bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
-                          >
-                            AI 회신 초안 생성
-                          </Button>
-                        )}
-
-                        {/* 로딩 애니메이션 */}
-                        {isGenerating && (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="flex items-center gap-3">
-                              <Loader2 className="h-6 w-6 text-[#1A73E8] animate-spin" />
-                              <span className="text-sm text-[#5F6368]">AI가 회신 초안을 작성하고 있습니다...</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 생성된 회신 */}
-                        {generatedReply && !isGenerating && (
-                          <div className="space-y-4">
-                            <div className="bg-[#F8F9FA] rounded-xl p-4 border border-[#E8EAED]">
-                              <pre className="text-sm text-[#202124] whitespace-pre-wrap font-sans leading-relaxed">
-                                {generatedReply}
-                              </pre>
-                            </div>
-
-                            {/* 버튼 영역 */}
-                            <div className="flex items-center gap-3">
-                              <Button
-                                onClick={handleCopyReply}
-                                variant="outline"
+                          {/* 톤앤매너 선택 */}
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="text-sm text-[#5F6368]">톤앤매너:</span>
+                            {(['공손한', '간결한', '공식적인'] as ToneType[]).map(tone => (
+                              <button
+                                key={tone}
+                                onClick={() => handleToneChange(tone)}
                                 className={cn(
-                                  "flex-1 border-[#DADCE0] rounded-xl transition-all duration-200",
-                                  copySuccess
-                                    ? "bg-[#E6F4EA] border-[#34A853] text-[#137333]"
-                                    : "text-[#5F6368] hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8]"
+                                  "px-4 py-2 text-sm rounded-xl transition-all duration-200",
+                                  selectedTone === tone
+                                    ? "bg-[#1A73E8] text-white"
+                                    : "bg-[#F8F9FA] text-[#5F6368] hover:bg-[#E8EAED]"
                                 )}
                               >
-                                {copySuccess ? (
-                                  <>
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                    복사 완료
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    회신 메일 복사하기
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                className="flex-1 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
-                              >
-                                <Send className="h-4 w-4 mr-2" />
-                                답장 발송
-                              </Button>
-                            </div>
+                                {tone}
+                              </button>
+                            ))}
                           </div>
-                        )}
-                      </div>
+
+                          {/* 초안 생성 버튼 */}
+                          {!generatedReply && !isGenerating && (
+                            <Button
+                              onClick={handleGenerateReply}
+                              className="w-full bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium py-3 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                            >
+                              AI 회신 초안 생성
+                            </Button>
+                          )}
+
+                          {/* 로딩 애니메이션 */}
+                          {isGenerating && (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="flex items-center gap-3">
+                                <Loader2 className="h-6 w-6 text-[#1A73E8] animate-spin" />
+                                <span className="text-sm text-[#5F6368]">AI가 회신 초안을 작성하고 있습니다...</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 생성된 회신 */}
+                          {generatedReply && !isGenerating && (
+                            <div className="space-y-4">
+                              <div className="bg-[#F8F9FA] rounded-xl p-4 border border-[#E8EAED]">
+                                <pre className="text-sm text-[#202124] whitespace-pre-wrap font-sans leading-relaxed">
+                                  {generatedReply}
+                                </pre>
+                              </div>
+
+                              {/* 버튼 영역 */}
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  onClick={handleCopyReply}
+                                  variant="outline"
+                                  className={cn(
+                                    "flex-1 border-[#DADCE0] rounded-xl transition-all duration-200",
+                                    copySuccess
+                                      ? "bg-[#E6F4EA] border-[#34A853] text-[#137333]"
+                                      : "text-[#5F6368] hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8]"
+                                  )}
+                                >
+                                  {copySuccess ? (
+                                    <>
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      복사 완료
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-4 w-4 mr-2" />
+                                      회신 메일 복사하기
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  className="flex-1 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  답장 발송
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
@@ -450,40 +574,117 @@ export default function Page4() {
 
           {/* 견적 AI 탭 */}
           {activeTab === '견적 AI' && (
-            <div className="p-12 flex items-center justify-center min-h-[500px]">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-10 w-10 text-[#DADCE0]" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#202124] mb-2">견적 AI</h3>
-                <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
+            <div className="p-6">
+              {/* 상단 버튼 영역 */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  onClick={() => setQuoteRegisterOpen(true)}
+                  className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" />
+                  견적 등록
+                </Button>
               </div>
+
+              {/* 견적 테이블 */}
+              <Card className="rounded-2xl border-[#E8EAED] overflow-hidden shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                      <TableHead className="text-center font-semibold text-[#202124]">No</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">작업이름</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">등록시간</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">작업자</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">상태</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">등록</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">결과</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quoteData.map((row, index) => (
+                      <TableRow
+                        key={row.id}
+                        className={`hover:bg-[#F8F9FA] transition-colors ${index < quoteData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                      >
+                        <TableCell className="text-center text-[#5F6368]">{row.no}</TableCell>
+                        <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                              row.status === '완료' && "bg-[#E6F4EA] text-[#137333]",
+                              row.status === '진행중' && "bg-[#E8F0FE] text-[#1A73E8]",
+                              row.status === '오류' && "bg-[#FCE8E6] text-[#C5221F]"
+                            )}
+                          >
+                            {row.status === '진행중' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                            {row.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            onClick={() => handleViewDetail(row)}
+                            className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-colors"
+                            title="등록 정보 보기"
+                          >
+                            <FileText className="h-4 w-4 text-[#5F6368]" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {row.status === '완료' && (
+                            <button
+                              onClick={() => handleDownload(row)}
+                              className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-colors"
+                              title="결과 다운로드"
+                            >
+                              <Download className="h-4 w-4 text-[#1A73E8]" />
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {quoteData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12 text-[#5F6368]">
+                          등록된 견적이 없습니다.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
             </div>
           )}
 
           {/* 제작 AI 탭 */}
           {activeTab === '제작 AI' && (
             <div className="p-12 flex items-center justify-center min-h-[500px]">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-10 w-10 text-[#DADCE0]" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#202124] mb-2">제작 AI</h3>
-                <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
-              </div>
+              <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
+                <CardContent className="py-16 px-24 text-center">
+                  <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
+                    <FileText className="h-10 w-10 text-[#DADCE0]" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-[#202124] mb-2">제작 AI</h3>
+                  <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {/* 보고서 AI 탭 */}
           {activeTab === '보고서 AI' && (
             <div className="p-12 flex items-center justify-center min-h-[500px]">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-10 w-10 text-[#DADCE0]" />
-                </div>
-                <h3 className="text-lg font-semibold text-[#202124] mb-2">보고서 AI</h3>
-                <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
-              </div>
+              <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
+                <CardContent className="py-16 px-24 text-center">
+                  <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
+                    <FileText className="h-10 w-10 text-[#DADCE0]" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-[#202124] mb-2">보고서 AI</h3>
+                  <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
@@ -542,6 +743,138 @@ export default function Page4() {
               className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
             >
               취소
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 견적 등록 다이얼로그 */}
+      <Dialog open={quoteRegisterOpen} onOpenChange={setQuoteRegisterOpen}>
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">견적 등록</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">키워드</label>
+              <Input
+                placeholder="키워드를 입력해주세요."
+                value={newQuote.keyword}
+                onChange={(e) => setNewQuote({ ...newQuote, keyword: e.target.value })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">매체</label>
+              <Select value={newQuote.media} onValueChange={(v) => setNewQuote({ ...newQuote, media: v })}>
+                <SelectTrigger className="w-full border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
+                  <SelectValue placeholder="매체" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
+                  <SelectItem value="네이버 검색광고" className="rounded-lg hover:bg-[#F8F9FA]">네이버 검색광고</SelectItem>
+                  <SelectItem value="브랜드검색" className="rounded-lg hover:bg-[#F8F9FA]">브랜드검색</SelectItem>
+                  <SelectItem value="카카오 키워드" className="rounded-lg hover:bg-[#F8F9FA]">카카오 키워드</SelectItem>
+                  <SelectItem value="구글 검색광고" className="rounded-lg hover:bg-[#F8F9FA]">구글 검색광고</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">기준</label>
+              <Select value={newQuote.criteria} onValueChange={(v) => setNewQuote({ ...newQuote, criteria: v })}>
+                <SelectTrigger className="w-full border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
+                  <SelectValue placeholder="기준" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
+                  <SelectItem value="노출 최대화" className="rounded-lg hover:bg-[#F8F9FA]">노출 최대화</SelectItem>
+                  <SelectItem value="클릭 최대화" className="rounded-lg hover:bg-[#F8F9FA]">클릭 최대화</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">PC 예산</label>
+              <Input
+                type="number"
+                placeholder="PC 월 예산을 입력해주세요."
+                value={newQuote.pcBudget}
+                onChange={(e) => setNewQuote({ ...newQuote, pcBudget: e.target.value.replace(/[^0-9]/g, '') })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">Mobile 예산</label>
+              <Input
+                type="number"
+                placeholder="Mobile 월 예산을 입력해주세요."
+                value={newQuote.mobileBudget}
+                onChange={(e) => setNewQuote({ ...newQuote, mobileBudget: e.target.value.replace(/[^0-9]/g, '') })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setQuoteRegisterOpen(false)
+                setNewQuote({ keyword: '', media: '', criteria: '', pcBudget: '', mobileBudget: '' })
+              }}
+              className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleQuoteSubmit}
+              disabled={!newQuote.keyword || !newQuote.media || !newQuote.criteria}
+              className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              등록
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 등록 상세 다이얼로그 */}
+      <Dialog open={quoteDetailOpen} onOpenChange={setQuoteDetailOpen}>
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">등록 정보</DialogTitle>
+          </DialogHeader>
+          {selectedQuote && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">키워드</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.keyword}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">매체</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.media}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">기준</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.criteria}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">상태</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.status}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">PC 예산</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.pcBudget.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <p className="text-xs text-[#5F6368] mb-1">Mobile 예산</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.mobileBudget.toLocaleString()}원</p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => setQuoteDetailOpen(false)}
+              className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200"
+            >
+              확인
             </Button>
           </DialogFooter>
         </DialogContent>
