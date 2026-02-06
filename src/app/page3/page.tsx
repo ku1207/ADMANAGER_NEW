@@ -142,6 +142,7 @@ export default function Page3() {
 
   // 매체 도움말 툴팁 상태
   const [showMediaTooltip, setShowMediaTooltip] = useState(false)
+  const [showMediaTooltipList, setShowMediaTooltipList] = useState(false)
 
   // 설정 다이얼로그 테스트 상태
   const [settingsTestStatus, setSettingsTestStatus] = useState<TestStatus>('idle')
@@ -404,7 +405,35 @@ export default function Page3() {
                   <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
                     <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">매체</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <div className="inline-flex items-center gap-1.5 justify-center">
+                        매체
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowMediaTooltipList(!showMediaTooltipList)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-[#DADCE0] hover:bg-[#E8EAED] transition-colors"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5 text-[#5F6368]" />
+                          </button>
+                          {showMediaTooltipList && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowMediaTooltipList(false)}
+                              />
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-64 p-4 bg-[#202124] text-white text-xs rounded-xl shadow-lg">
+                                <div className="space-y-2">
+                                  <p><span className="font-semibold">네이버:</span> 네이버 검색광고 + 네이버 쇼핑검색광고</p>
+                                  <p><span className="font-semibold">카카오:</span> 카카오 검색광고</p>
+                                  <p><span className="font-semibold">구글:</span> 구글 검색광고 + 구글 디스플레이광고</p>
+                                </div>
+                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#202124] rotate-45" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">현 상태</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">관리</TableHead>
                   </TableRow>
