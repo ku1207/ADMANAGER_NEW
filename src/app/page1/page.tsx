@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Filter, ChevronLeft, ChevronRight, Search, Save } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Save } from 'lucide-react'
 import {
   Button,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Input,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Dialog, DialogContent, DialogHeader, DialogTitle,
   Checkbox,
 } from '@/components/ui'
@@ -323,13 +324,59 @@ function getDatesInRange(start: string, end: string): string[] {
 }
 
 type FilterTab = '계정&매체' | '캠페인' | '그룹'
+type SortDirection = 'asc' | 'desc' | null
+type DailySortKey = 'date' | 'impressions' | 'clicks' | 'ctr' | 'cost' | 'cpc' | 'conversions' | 'cvr' | 'cpa'
+
+// 드롭다운 필터용 데이터 추출
+function getAllAccountIds(): string[] {
+  return ACCOUNT_DATA.map(a => a.id)
+}
+
+function getAllMediaNames(): string[] {
+  const names = new Set<string>()
+  Object.values(MEDIA_DATA).forEach(medias => {
+    medias.forEach(m => names.add(m.name))
+  })
+  return Array.from(names)
+}
+
+function getAllCampaignNames(): string[] {
+  const names = new Set<string>()
+  Object.values(CAMPAIGN_DATA).forEach(campaigns => {
+    campaigns.forEach(c => names.add(c.name))
+  })
+  return Array.from(names)
+}
+
+function getAllGroupNames(): string[] {
+  const names = new Set<string>()
+  Object.values(GROUP_DATA).forEach(groups => {
+    groups.forEach(g => names.add(g.name))
+  })
+  return Array.from(names)
+}
+
+function SortIcon({ direction }: { direction: SortDirection }) {
+  return (
+    <span className="inline-flex flex-col ml-1 -space-y-1">
+      <span className={`text-[10px] leading-none ${direction === 'asc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9650;</span>
+      <span className={`text-[10px] leading-none ${direction === 'desc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9660;</span>
+    </span>
+  )
+}
 
 export default function Page1() {
   const [startDate, setStartDate] = useState(getDefaultStartDate())
   const [endDate, setEndDate] = useState(getDefaultEndDate())
   const [budgetVisible, setBudgetVisible] = useState(true)
 
-  // 필터 팝업 상태
+  // 드롭다운 필터 상태
+  const [filterAccountId, setFilterAccountId] = useState<string>('all')
+  const [filterMedia, setFilterMedia] = useState<string>('all')
+  const [filterCampaign, setFilterCampaign] = useState<string>('all')
+  const [filterGroup, setFilterGroup] = useState<string>('all')
+
+  // 필터 팝업 상태 (기존 유지 for saved filters)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterApplied, setFilterApplied] = useState(false)
   const [activeTab, setActiveTab] = useState<FilterTab>('계정&매체')
@@ -357,11 +404,35 @@ export default function Page1() {
   const [saveFilterName, setSaveFilterName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
 
+  // 정렬 상태
+  const [sortKey, setSortKey] = useState<DailySortKey | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+
+  // 정렬 토글
+  const handleSort = (key: DailySortKey) => {
+    if (sortKey === key) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc')
+      } else if (sortDirection === 'desc') {
+        setSortKey(null)
+        setSortDirection(null)
+      } else {
+        setSortDirection('asc')
+      }
+    } else {
+      setSortKey(key)
+      setSortDirection('asc')
+    }
+  }
+
+  const getSortDirection = (key: DailySortKey): SortDirection => {
+    return sortKey === key ? sortDirection : null
+  }
+
   // 탭별 데이터 가져오기
   const getTabData = () => {
     switch (activeTab) {
       case '계정&매체': {
-        // 계정&매체 탭: 계정 ID, 계정명, 매체 조합 반환
         const accountMediaList: { id: string; accountId: string; accountName: string; mediaName: string }[] = []
         ACCOUNT_DATA.forEach(acc => {
           const medias = MEDIA_DATA[acc.id] || []
@@ -382,14 +453,12 @@ export default function Page1() {
         }))
       }
       case '캠페인': {
-        // 캠페인 탭: 캠페인, 계정 ID, 매체 반환
         const campaignList: { id: string; col1: string; col2: string; col3: string }[] = []
         tempAccountMedias.forEach(amId => {
           const [accId, medId] = amId.split('_')
           const campaigns = CAMPAIGN_DATA[medId] || []
           campaigns.forEach(c => {
             if (!campaignList.find(item => item.id === c.id)) {
-              // 매체 이름 찾기
               let mediaName = ''
               const medias = MEDIA_DATA[accId] || []
               const found = medias.find(m => m.id === medId)
@@ -408,7 +477,6 @@ export default function Page1() {
           const groups = GROUP_DATA[camId] || []
           groups.forEach(g => {
             if (!groupList.find(item => item.id === g.id)) {
-              // 캠페인 이름 찾기
               let campaignName = ''
               for (const medId of Object.keys(CAMPAIGN_DATA)) {
                 const found = CAMPAIGN_DATA[medId].find(c => c.id === camId)
@@ -509,7 +577,6 @@ export default function Page1() {
       case '계정&매체':
         if (isSelected) {
           setTempAccountMedias(tempAccountMedias.filter(i => i !== id))
-          // 계정&매체 해제 시 하위 항목들도 초기화
           setTempCampaigns([])
           setTempGroups([])
         } else {
@@ -519,7 +586,6 @@ export default function Page1() {
       case '캠페인':
         if (isSelected) {
           setTempCampaigns(tempCampaigns.filter(i => i !== id))
-          // 캠페인 해제 시 하위 항목들도 초기화
           setTempGroups([])
         } else {
           setTempCampaigns([...tempCampaigns, id])
@@ -572,7 +638,6 @@ export default function Page1() {
     switch (activeTab) {
       case '계정&매체':
         setSelectedAccountMedias(tempAccountMedias)
-        // 다음 탭으로 이동
         if (tempAccountMedias.length > 0) {
           setActiveTab('캠페인')
           setSearchTerm('')
@@ -642,7 +707,6 @@ export default function Page1() {
   const summaryData = useMemo(() => {
     const today = getToday()
 
-    // 최근 7일 (오늘 제외, 직전 7일)
     const last7Days: string[] = []
     for (let i = 1; i <= 7; i++) {
       const d = new Date(today)
@@ -650,7 +714,6 @@ export default function Page1() {
       last7Days.push(formatDate(d))
     }
 
-    // 전일
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
     const yesterdayStr = formatDate(yesterday)
@@ -673,7 +736,7 @@ export default function Page1() {
     }
   }, [])
 
-  // 일자별 상세 데이터 (오름차순)
+  // 일자별 상세 데이터
   const dailyData = useMemo(() => {
     const dates = getDatesInRange(startDate, endDate)
     return dates.map(date => ({
@@ -681,6 +744,73 @@ export default function Page1() {
       ...generateDailyData(date),
     }))
   }, [startDate, endDate])
+
+  // 합계 데이터
+  const totalsData = useMemo(() => {
+    const totals = dailyData.reduce(
+      (acc, row) => ({
+        impressions: acc.impressions + row.impressions,
+        clicks: acc.clicks + row.clicks,
+        cost: acc.cost + row.cost,
+        conversions: acc.conversions + row.conversions,
+      }),
+      { impressions: 0, clicks: 0, cost: 0, conversions: 0 }
+    )
+    return totals
+  }, [dailyData])
+
+  // 정렬된 일자별 데이터
+  const sortedDailyData = useMemo(() => {
+    if (!sortKey || !sortDirection) return dailyData
+
+    return [...dailyData].sort((a, b) => {
+      let aVal: number
+      let bVal: number
+
+      switch (sortKey) {
+        case 'date':
+          aVal = new Date(a.date).getTime()
+          bVal = new Date(b.date).getTime()
+          break
+        case 'impressions':
+          aVal = a.impressions
+          bVal = b.impressions
+          break
+        case 'clicks':
+          aVal = a.clicks
+          bVal = b.clicks
+          break
+        case 'ctr':
+          aVal = a.impressions > 0 ? a.clicks / a.impressions : 0
+          bVal = b.impressions > 0 ? b.clicks / b.impressions : 0
+          break
+        case 'cost':
+          aVal = a.cost
+          bVal = b.cost
+          break
+        case 'cpc':
+          aVal = a.clicks > 0 ? a.cost / a.clicks : 0
+          bVal = b.clicks > 0 ? b.cost / b.clicks : 0
+          break
+        case 'conversions':
+          aVal = a.conversions
+          bVal = b.conversions
+          break
+        case 'cvr':
+          aVal = a.clicks > 0 ? a.conversions / a.clicks : 0
+          bVal = b.clicks > 0 ? b.conversions / b.clicks : 0
+          break
+        case 'cpa':
+          aVal = a.conversions > 0 ? a.cost / a.conversions : 0
+          bVal = b.conversions > 0 ? b.cost / b.conversions : 0
+          break
+        default:
+          return 0
+      }
+
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+    })
+  }, [dailyData, sortKey, sortDirection])
 
   const FILTER_TABS: FilterTab[] = ['계정&매체', '캠페인', '그룹']
 
@@ -693,19 +823,57 @@ export default function Page1() {
         {/* 필터 설정 영역 */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <div className="flex flex-wrap items-center gap-4">
-            {/* 필터 버튼 */}
-            <Button
-              onClick={handleOpenFilter}
-              className={`gap-2 px-5 rounded-xl transition-all duration-200 ${
-                filterApplied
-                  ? 'bg-[#E8F0FE] text-[#1A73E8] border-[#1A73E8] border hover:bg-[#D2E3FC]'
-                  : 'bg-white border-[#DADCE0] border text-[#5F6368] hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8]'
-              }`}
-              variant="outline"
-            >
-              <Filter className="h-4 w-4" />
-              {filterApplied ? '필터 적용됨' : '필터'}
-            </Button>
+            {/* 드롭다운 필터: 계정 ID */}
+            <Select value={filterAccountId} onValueChange={setFilterAccountId}>
+              <SelectTrigger className="w-[160px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
+                <SelectValue placeholder="계정 ID" />
+              </SelectTrigger>
+              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
+                <SelectItem value="all">계정 ID (전체)</SelectItem>
+                {getAllAccountIds().map(id => (
+                  <SelectItem key={id} value={id}>{id}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* 드롭다운 필터: 매체 */}
+            <Select value={filterMedia} onValueChange={setFilterMedia}>
+              <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
+                <SelectValue placeholder="매체" />
+              </SelectTrigger>
+              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
+                <SelectItem value="all">매체 (전체)</SelectItem>
+                {getAllMediaNames().map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* 드롭다운 필터: 캠페인 */}
+            <Select value={filterCampaign} onValueChange={setFilterCampaign}>
+              <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
+                <SelectValue placeholder="캠페인" />
+              </SelectTrigger>
+              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
+                <SelectItem value="all">캠페인 (전체)</SelectItem>
+                {getAllCampaignNames().map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* 드롭다운 필터: 그룹 */}
+            <Select value={filterGroup} onValueChange={setFilterGroup}>
+              <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
+                <SelectValue placeholder="그룹" />
+              </SelectTrigger>
+              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
+                <SelectItem value="all">그룹 (전체)</SelectItem>
+                {getAllGroupNames().map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* 구분선 */}
             <div className="h-10 w-px bg-[#E8EAED]" />
@@ -919,7 +1087,6 @@ export default function Page1() {
                   {getCurrentSelection().length}개 선택됨
                 </span>
                 <div className="flex items-center gap-3">
-                  {/* 그룹 탭에서만 검색기록 저장 버튼 표시 */}
                   {activeTab === '그룹' && tempGroups.length > 0 && (
                     <>
                       {showSaveDialog ? (
@@ -1044,22 +1211,70 @@ export default function Page1() {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
-                <TableHead className="text-center font-semibold text-[#202124]">일자</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">노출</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">클릭</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">CTR</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">광고비</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">CPC</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">전환수</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">CVR</TableHead>
-                <TableHead className="text-center font-semibold text-[#202124]">CPA</TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('date')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    일자 <SortIcon direction={getSortDirection('date')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('impressions')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    노출 <SortIcon direction={getSortDirection('impressions')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('clicks')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    클릭 <SortIcon direction={getSortDirection('clicks')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('ctr')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    CTR <SortIcon direction={getSortDirection('ctr')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('cost')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    광고비 <SortIcon direction={getSortDirection('cost')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('cpc')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    CPC <SortIcon direction={getSortDirection('cpc')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('conversions')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    전환수 <SortIcon direction={getSortDirection('conversions')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('cvr')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    CVR <SortIcon direction={getSortDirection('cvr')} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-center font-semibold text-[#202124]">
+                  <button onClick={() => handleSort('cpa')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                    CPA <SortIcon direction={getSortDirection('cpa')} />
+                  </button>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dailyData.map((row, index) => (
+              {/* 합계 행 */}
+              <TableRow className="bg-[#E8F0FE] border-b border-[#D2E3FC] font-semibold">
+                <TableCell className="text-center text-[#1A73E8]">합계</TableCell>
+                <TableCell className="text-right text-[#202124]">{totalsData.impressions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#202124]">{totalsData.clicks.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#202124]">{calcCTR(totalsData.impressions, totalsData.clicks)}</TableCell>
+                <TableCell className="text-right text-[#202124]">{totalsData.cost.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#202124]">{calcCPC(totalsData.cost, totalsData.clicks)}</TableCell>
+                <TableCell className="text-right text-[#202124]">{totalsData.conversions.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[#202124]">{calcCVR(totalsData.conversions, totalsData.clicks)}</TableCell>
+                <TableCell className="text-right text-[#202124]">{calcCPA(totalsData.cost, totalsData.conversions)}</TableCell>
+              </TableRow>
+              {sortedDailyData.map((row, index) => (
                 <TableRow
                   key={row.date}
-                  className={`hover:bg-[#F8F9FA] transition-colors ${index < dailyData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                  className={`hover:bg-[#F8F9FA] transition-colors ${index < sortedDailyData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
                 >
                   <TableCell className="text-center text-[#202124]">{row.date}</TableCell>
                   <TableCell className="text-right text-[#5F6368]">{row.impressions.toLocaleString()}</TableCell>

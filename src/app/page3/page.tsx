@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui'
-import { RotateCw, Settings, Trash2, CheckCircle2, XCircle, HelpCircle } from 'lucide-react'
+import { RotateCw, Settings, Trash2, CheckCircle2, XCircle, HelpCircle, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // 매체 목록
@@ -100,9 +100,10 @@ const INITIAL_ADVERTISER_DATA: Advertiser[] = [
   { id: 'ADV-023', name: '헬스케어플러스', media: '네이버', balance: 7200000, dailySpend: 470000, weeklySpend: 3290000, updatedAt: '2026-02-03 14:15', status: '정상 연동' },
 ]
 
-function calcEstimatedDays(balance: number, dailySpend: number): number {
-  if (dailySpend === 0) return 0
-  return Math.floor(balance / dailySpend)
+function calcEstimatedDays(balance: number, weeklySpend: number): number {
+  const dailyAvg = weeklySpend / 7
+  if (dailyAvg === 0) return 0
+  return Math.floor(balance / dailyAvg)
 }
 
 function generateRandomBalance(): number {
@@ -123,6 +124,17 @@ const ITEMS_PER_PAGE = 10
 
 type TabType = '광고주 목록' | '계정 잔액 확인' | '광고주 등록'
 type TestStatus = 'idle' | 'testing' | 'success' | 'error'
+type SortDirection = 'asc' | 'desc' | null
+type BalanceSortKey = 'balance' | 'dailySpend' | 'weeklySpend' | 'estimatedDays'
+
+function SortIcon({ direction }: { direction: SortDirection }) {
+  return (
+    <span className="inline-flex flex-col ml-1 -space-y-1">
+      <span className={`text-[10px] leading-none ${direction === 'asc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9650;</span>
+      <span className={`text-[10px] leading-none ${direction === 'desc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9660;</span>
+    </span>
+  )
+}
 
 export default function Page3() {
   const [activeTab, setActiveTab] = useState<TabType>('광고주 목록')
@@ -147,6 +159,34 @@ export default function Page3() {
   // 설정 다이얼로그 테스트 상태
   const [settingsTestStatus, setSettingsTestStatus] = useState<TestStatus>('idle')
 
+  // 예상 소진일 가이드라인 툴팁 상태
+  const [showEstimatedDaysTooltip, setShowEstimatedDaysTooltip] = useState(false)
+
+  // 정렬 상태 (계정 잔액 확인 탭)
+  const [balanceSortKey, setBalanceSortKey] = useState<BalanceSortKey | null>(null)
+  const [balanceSortDirection, setBalanceSortDirection] = useState<SortDirection>(null)
+
+  // 정렬 토글
+  const handleBalanceSort = (key: BalanceSortKey) => {
+    if (balanceSortKey === key) {
+      if (balanceSortDirection === 'asc') {
+        setBalanceSortDirection('desc')
+      } else if (balanceSortDirection === 'desc') {
+        setBalanceSortKey(null)
+        setBalanceSortDirection(null)
+      } else {
+        setBalanceSortDirection('asc')
+      }
+    } else {
+      setBalanceSortKey(key)
+      setBalanceSortDirection('asc')
+    }
+  }
+
+  const getBalanceSortDirection = (key: BalanceSortKey): SortDirection => {
+    return balanceSortKey === key ? balanceSortDirection : null
+  }
+
   const handleSearch = () => {
     if (searchKeyword.length > 0 && searchKeyword.length < 2) {
       setSearchError('2글자 이상 입력해 주세요.')
@@ -168,7 +208,6 @@ export default function Page3() {
     setActiveTab(tab)
     setCurrentPage(1)
     setSelectedIds(new Set())
-    // 탭 변경 시 등록 폼 초기화
     if (tab === '광고주 등록') {
       setRegMedia('')
       setRegApiValues({})
@@ -186,9 +225,43 @@ export default function Page3() {
     )
   }, [appliedKeyword, advertiserData])
 
-  // 페이지네이션
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE)
-  const paginatedData = filteredData.slice(
+  // 정렬된 데이터 (계정 잔액 확인 탭용)
+  const sortedFilteredData = useMemo(() => {
+    if (!balanceSortKey || !balanceSortDirection) return filteredData
+
+    return [...filteredData].sort((a, b) => {
+      let aVal: number
+      let bVal: number
+
+      switch (balanceSortKey) {
+        case 'balance':
+          aVal = a.balance
+          bVal = b.balance
+          break
+        case 'dailySpend':
+          aVal = a.dailySpend
+          bVal = b.dailySpend
+          break
+        case 'weeklySpend':
+          aVal = a.weeklySpend
+          bVal = b.weeklySpend
+          break
+        case 'estimatedDays':
+          aVal = calcEstimatedDays(a.balance, a.weeklySpend)
+          bVal = calcEstimatedDays(b.balance, b.weeklySpend)
+          break
+        default:
+          return 0
+      }
+
+      return balanceSortDirection === 'asc' ? aVal - bVal : bVal - aVal
+    })
+  }, [filteredData, balanceSortKey, balanceSortDirection])
+
+  // 페이지네이션 - 계정 잔액 확인 탭에서는 정렬된 데이터 사용
+  const dataForPagination = activeTab === '계정 잔액 확인' ? sortedFilteredData : filteredData
+  const totalPages = Math.ceil(dataForPagination.length / ITEMS_PER_PAGE)
+  const paginatedData = dataForPagination.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   )
@@ -289,7 +362,6 @@ export default function Page3() {
     if (!regMedia) return
     setTestStatus('testing')
 
-    // 시뮬레이션: 1.5초 후 무작위 결과
     setTimeout(() => {
       const isSuccess = Math.random() > 0.3
       setTestStatus(isSuccess ? 'success' : 'error')
@@ -499,7 +571,7 @@ export default function Page3() {
           {/* 계정 잔액 확인 탭 */}
           {activeTab === '계정 잔액 확인' && (
             <div>
-              {/* 예산 새로고침 버튼 - 테이블과 간격 추가 */}
+              {/* 예산 새로고침 버튼 */}
               <div className="flex justify-end px-6 py-4">
                 <Button
                   className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
@@ -550,44 +622,105 @@ export default function Page3() {
                         </div>
                       </div>
                     </TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">계정 잔액</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">전일 집행비</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">최근 7일 집행비</TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">예상 소진일</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <button onClick={() => handleBalanceSort('balance')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                        계정 잔액 <SortIcon direction={getBalanceSortDirection('balance')} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <button onClick={() => handleBalanceSort('dailySpend')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                        전일 집행비 <SortIcon direction={getBalanceSortDirection('dailySpend')} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <button onClick={() => handleBalanceSort('weeklySpend')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                        최근 7일 집행비 <SortIcon direction={getBalanceSortDirection('weeklySpend')} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <div className="inline-flex items-center gap-1.5 justify-center">
+                        <button onClick={() => handleBalanceSort('estimatedDays')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                          예상 소진일 <SortIcon direction={getBalanceSortDirection('estimatedDays')} />
+                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowEstimatedDaysTooltip(!showEstimatedDaysTooltip)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-[#DADCE0] hover:bg-[#E8EAED] transition-colors"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5 text-[#5F6368]" />
+                          </button>
+                          {showEstimatedDaysTooltip && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowEstimatedDaysTooltip(false)}
+                              />
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-72 p-4 bg-[#202124] text-white text-xs rounded-xl shadow-lg">
+                                <div className="space-y-2">
+                                  <p className="font-semibold">예상 소진일 계산 로직</p>
+                                  <p>계정 잔액 / (최근 7일 집행비 / 7)</p>
+                                  <p className="text-[#9AA0A6]">최근 7일간의 일평균 집행비를 기준으로 잔액이 소진되는 데 걸리는 예상 일수를 계산합니다.</p>
+                                </div>
+                                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#202124] rotate-45" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">업데이트 시간</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124] w-[60px]">새로고침</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((row, index) => (
-                    <TableRow
-                      key={row.id}
-                      className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
-                    >
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={selectedIds.has(row.id)}
-                          onCheckedChange={() => toggleSelect(row.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
-                      <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
-                      <TableCell className="text-right text-[#5F6368]">{row.balance.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-[#5F6368]">{row.dailySpend.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-[#5F6368]">{row.weeklySpend.toLocaleString()}</TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{calcEstimatedDays(row.balance, row.dailySpend)}일</TableCell>
-                      <TableCell className="text-center text-[#5F6368]">{row.updatedAt}</TableCell>
-                      <TableCell className="text-center">
-                        <button
-                          onClick={() => handleRefresh(row.id)}
-                          className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
-                        >
-                          <RotateCw className="h-4 w-4 text-[#5F6368]" />
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {paginatedData.map((row, index) => {
+                    const estimatedDays = calcEstimatedDays(row.balance, row.weeklySpend)
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className={`hover:bg-[#F8F9FA] transition-colors ${index < paginatedData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                      >
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.has(row.id)}
+                            onCheckedChange={() => toggleSelect(row.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.id}</TableCell>
+                        <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.media}</TableCell>
+                        <TableCell className="text-right text-[#5F6368]">{row.balance.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-[#5F6368]">{row.dailySpend.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-[#5F6368]">{row.weeklySpend.toLocaleString()}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className={cn(
+                              "text-[#5F6368]",
+                              estimatedDays < 3 && "font-semibold text-[#C5221F]",
+                              estimatedDays >= 3 && estimatedDays < 5 && "font-semibold text-[#E37400]"
+                            )}>
+                              {estimatedDays}일
+                            </span>
+                            {estimatedDays < 3 && (
+                              <AlertTriangle className="h-4 w-4 text-[#EA4335]" />
+                            )}
+                            {estimatedDays >= 3 && estimatedDays < 5 && (
+                              <AlertTriangle className="h-4 w-4 text-[#F9AB00]" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.updatedAt}</TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            onClick={() => handleRefresh(row.id)}
+                            className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+                          >
+                            <RotateCw className="h-4 w-4 text-[#5F6368]" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                   {paginatedData.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center py-12 text-[#5F6368]">
