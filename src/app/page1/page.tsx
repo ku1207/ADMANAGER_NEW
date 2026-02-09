@@ -323,7 +323,7 @@ function getDatesInRange(start: string, end: string): string[] {
   return dates
 }
 
-type FilterTab = '계정&매체' | '캠페인' | '그룹'
+type FilterTab = '광고주&매체' | '캠페인' | '그룹'
 type SortDirection = 'asc' | 'desc' | null
 type DailySortKey = 'date' | 'impressions' | 'clicks' | 'ctr' | 'cost' | 'cpc' | 'conversions' | 'cvr' | 'cpa'
 
@@ -382,8 +382,9 @@ export default function Page1() {
   // 드롭다운 필터 상태
   const [filterAccountId, setFilterAccountId] = useState<string>('all')
   const [filterMedia, setFilterMedia] = useState<string>('all')
-  const [filterCampaign, setFilterCampaign] = useState<string>('all')
+  const [filterCampaigns, setFilterCampaigns] = useState<string[]>([])
   const [filterGroup, setFilterGroup] = useState<string>('all')
+  const [campaignDropdownOpen, setCampaignDropdownOpen] = useState(false)
 
   // 종속 드롭다운 데이터 계산
   const filteredMediaNames = useMemo(() => {
@@ -413,7 +414,7 @@ export default function Page1() {
   }, [filterAccountId, filterMedia])
 
   const filteredGroupNames = useMemo(() => {
-    if (filterAccountId === 'all' && filterMedia === 'all' && filterCampaign === 'all') {
+    if (filterAccountId === 'all' && filterMedia === 'all' && filterCampaigns.length === 0) {
       return getAllGroupNames()
     }
     const groupNames = new Set<string>()
@@ -424,7 +425,7 @@ export default function Page1() {
         if (filterMedia === 'all' || m.name === filterMedia) {
           const campaigns = CAMPAIGN_DATA[m.id] || []
           campaigns.forEach(c => {
-            if (filterCampaign === 'all' || c.name === filterCampaign) {
+            if (filterCampaigns.length === 0 || filterCampaigns.includes(c.name)) {
               const groups = GROUP_DATA[c.id] || []
               groups.forEach(g => groupNames.add(g.name))
             }
@@ -433,31 +434,46 @@ export default function Page1() {
       })
     })
     return Array.from(groupNames)
-  }, [filterAccountId, filterMedia, filterCampaign])
+  }, [filterAccountId, filterMedia, filterCampaigns])
 
   // 상위 필터 변경 시 하위 필터 초기화
   const handleAccountIdChange = (value: string) => {
     setFilterAccountId(value)
     setFilterMedia('all')
-    setFilterCampaign('all')
+    setFilterCampaigns([])
     setFilterGroup('all')
   }
 
   const handleMediaChange = (value: string) => {
     setFilterMedia(value)
-    setFilterCampaign('all')
+    setFilterCampaigns([])
     setFilterGroup('all')
   }
 
-  const handleCampaignChange = (value: string) => {
-    setFilterCampaign(value)
+  const handleCampaignToggle = (campaignName: string) => {
+    setFilterCampaigns(prev => {
+      if (prev.includes(campaignName)) {
+        return prev.filter(c => c !== campaignName)
+      } else {
+        return [...prev, campaignName]
+      }
+    })
+    setFilterGroup('all')
+  }
+
+  const handleCampaignSelectAll = () => {
+    if (filterCampaigns.length === filteredCampaignNames.length) {
+      setFilterCampaigns([])
+    } else {
+      setFilterCampaigns([...filteredCampaignNames])
+    }
     setFilterGroup('all')
   }
 
   // 필터 팝업 상태 (기존 유지 for saved filters)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterApplied, setFilterApplied] = useState(false)
-  const [activeTab, setActiveTab] = useState<FilterTab>('계정&매체')
+  const [activeTab, setActiveTab] = useState<FilterTab>('광고주&매체')
 
   // 선택된 필터 값
   const [selectedAccountMedias, setSelectedAccountMedias] = useState<string[]>([])
@@ -510,7 +526,7 @@ export default function Page1() {
   // 탭별 데이터 가져오기
   const getTabData = () => {
     switch (activeTab) {
-      case '계정&매체': {
+      case '광고주&매체': {
         const accountMediaList: { id: string; accountId: string; accountName: string; mediaName: string }[] = []
         ACCOUNT_DATA.forEach(acc => {
           const medias = MEDIA_DATA[acc.id] || []
@@ -596,7 +612,7 @@ export default function Page1() {
   // 현재 탭의 선택 상태 가져오기
   const getCurrentSelection = () => {
     switch (activeTab) {
-      case '계정&매체': return tempAccountMedias
+      case '광고주&매체': return tempAccountMedias
       case '캠페인': return tempCampaigns
       case '그룹': return tempGroups
       default: return []
@@ -611,7 +627,7 @@ export default function Page1() {
     const isAllSelected = allIds.length > 0 && allIds.every(id => currentSelection.includes(id))
 
     switch (activeTab) {
-      case '계정&매체':
+      case '광고주&매체':
         if (isAllSelected) {
           setTempAccountMedias([])
           setTempCampaigns([])
@@ -652,7 +668,7 @@ export default function Page1() {
     const isSelected = currentSelection.includes(id)
 
     switch (activeTab) {
-      case '계정&매체':
+      case '광고주&매체':
         if (isSelected) {
           setTempAccountMedias(tempAccountMedias.filter(i => i !== id))
           setTempCampaigns([])
@@ -682,7 +698,7 @@ export default function Page1() {
   // 적용 버튼 활성화 여부
   const canApply = () => {
     switch (activeTab) {
-      case '계정&매체': return tempAccountMedias.length > 0
+      case '광고주&매체': return tempAccountMedias.length > 0
       case '캠페인': return tempCampaigns.length > 0
       case '그룹': return tempGroups.length > 0
       default: return false
@@ -692,7 +708,7 @@ export default function Page1() {
   // 탭 이동 가능 여부
   const canAccessTab = (tab: FilterTab) => {
     switch (tab) {
-      case '계정&매체': return true
+      case '광고주&매체': return true
       case '캠페인': return tempAccountMedias.length > 0
       case '그룹': return tempCampaigns.length > 0
       default: return false
@@ -706,7 +722,7 @@ export default function Page1() {
     setTempGroups(selectedGroups)
     setSearchTerm('')
     setCurrentPage(1)
-    setActiveTab('계정&매체')
+    setActiveTab('광고주&매체')
     setShowSavedFilters(false)
     setFilterOpen(true)
   }
@@ -714,7 +730,7 @@ export default function Page1() {
   // 적용 버튼 클릭
   const handleApply = () => {
     switch (activeTab) {
-      case '계정&매체':
+      case '광고주&매체':
         setSelectedAccountMedias(tempAccountMedias)
         if (tempAccountMedias.length > 0) {
           setActiveTab('캠페인')
@@ -890,7 +906,7 @@ export default function Page1() {
     })
   }, [dailyData, sortKey, sortDirection])
 
-  const FILTER_TABS: FilterTab[] = ['계정&매체', '캠페인', '그룹']
+  const FILTER_TABS: FilterTab[] = ['광고주&매체', '캠페인', '그룹']
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -901,19 +917,6 @@ export default function Page1() {
         {/* 필터 설정 영역 */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <div className="flex flex-wrap items-center gap-4">
-            {/* 드롭다운 필터: 계정 ID */}
-            <Select value={filterAccountId} onValueChange={handleAccountIdChange}>
-              <SelectTrigger className="w-[160px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
-                <SelectValue placeholder="계정 ID" />
-              </SelectTrigger>
-              <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
-                <SelectItem value="all">계정 ID (전체)</SelectItem>
-                {getAllAccountIds().map(id => (
-                  <SelectItem key={id} value={id}>{id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             {/* 드롭다운 필터: 매체 */}
             <Select value={filterMedia} onValueChange={handleMediaChange}>
               <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
@@ -927,18 +930,62 @@ export default function Page1() {
               </SelectContent>
             </Select>
 
-            {/* 드롭다운 필터: 캠페인 */}
-            <Select value={filterCampaign} onValueChange={handleCampaignChange}>
-              <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
-                <SelectValue placeholder="캠페인" />
+            {/* 드롭다운 필터: 광고주 ID */}
+            <Select value={filterAccountId} onValueChange={handleAccountIdChange}>
+              <SelectTrigger className="w-[160px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
+                <SelectValue placeholder="광고주 ID" />
               </SelectTrigger>
               <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
-                <SelectItem value="all">캠페인 (전체)</SelectItem>
-                {filteredCampaignNames.map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                <SelectItem value="all">광고주 ID (전체)</SelectItem>
+                {getAllAccountIds().map(id => (
+                  <SelectItem key={id} value={id}>{id}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* 드롭다운 필터: 캠페인 (다중선택) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCampaignDropdownOpen(!campaignDropdownOpen)}
+                className="w-[180px] h-10 px-3 flex items-center justify-between border border-[#E8EAED] rounded-xl bg-white text-sm focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE] focus:outline-none"
+              >
+                <span className="truncate text-left">
+                  {filterCampaigns.length === 0 
+                    ? '캠페인 (전체)' 
+                    : filterCampaigns.length === 1 
+                      ? filterCampaigns[0] 
+                      : `${filterCampaigns[0]} 외 ${filterCampaigns.length - 1}개`}
+                </span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {campaignDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-[220px] bg-white rounded-xl border border-[#E8EAED] shadow-lg max-h-60 overflow-auto">
+                  <div className="p-2 border-b border-[#E8EAED]">
+                    <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#F8F9FA] rounded-lg cursor-pointer">
+                      <Checkbox
+                        checked={filterCampaigns.length === filteredCampaignNames.length && filteredCampaignNames.length > 0}
+                        onCheckedChange={handleCampaignSelectAll}
+                      />
+                      <span className="text-sm font-medium">전체 선택</span>
+                    </label>
+                  </div>
+                  <div className="p-2">
+                    {filteredCampaignNames.map(name => (
+                      <label key={name} className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#F8F9FA] rounded-lg cursor-pointer">
+                        <Checkbox
+                          checked={filterCampaigns.includes(name)}
+                          onCheckedChange={() => handleCampaignToggle(name)}
+                        />
+                        <span className="text-sm">{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* 드롭다운 필터: 그룹 */}
             <Select value={filterGroup} onValueChange={setFilterGroup}>
@@ -1082,10 +1129,10 @@ export default function Page1() {
                         />
                       </TableHead>
                       <TableHead className="font-semibold text-[#202124]">
-                        {activeTab === '계정&매체' ? '계정 ID' : activeTab === '캠페인' ? '캠페인' : '그룹'}
+                        {activeTab === '광고주&매체' ? '광고주 ID' : activeTab === '캠페인' ? '캠페인' : '그룹'}
                       </TableHead>
                       <TableHead className="font-semibold text-[#202124]">
-                        {activeTab === '계정&매체' ? '계정명' : activeTab === '캠페인' ? '계정 ID' : '캠페인'}
+                        {activeTab === '광고주&매체' ? '광고주명' : activeTab === '캠페인' ? '광고주 ID' : '캠페인'}
                       </TableHead>
                       {activeTab !== '그룹' && (
                         <TableHead className="font-semibold text-[#202124]">매체</TableHead>
@@ -1122,7 +1169,7 @@ export default function Page1() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={activeTab === '그룹' ? 3 : 4} className="text-center py-8 text-[#9AA0A6]">
-                          {activeTab !== '계정&매체' && getCurrentSelection().length === 0
+                          {activeTab !== '광고주&매체' && getCurrentSelection().length === 0
                             ? '이전 단계에서 항목을 선택해주세요.'
                             : searchTerm.length > 0 && searchTerm.length < 2
                               ? '검색어는 2글자 이상 입력해주세요.'
