@@ -125,13 +125,22 @@ const ITEMS_PER_PAGE = 10
 type TabType = '광고주 목록' | '계정 잔액 확인' | '광고주 등록'
 type TestStatus = 'idle' | 'testing' | 'success' | 'error'
 type SortDirection = 'asc' | 'desc' | null
-type BalanceSortKey = 'balance' | 'dailySpend' | 'weeklySpend' | 'estimatedDays'
+type BalanceSortKey = 'id' | 'balance' | 'dailySpend' | 'weeklySpend' | 'estimatedDays'
 
 function SortIcon({ direction }: { direction: SortDirection }) {
+  if (!direction) {
+    return (
+      <span className="inline-flex flex-col ml-1 -space-y-1">
+        <span className="text-[10px] leading-none text-[#DADCE0]">&#9650;</span>
+        <span className="text-[10px] leading-none text-[#DADCE0]">&#9660;</span>
+      </span>
+    )
+  }
   return (
-    <span className="inline-flex flex-col ml-1 -space-y-1">
-      <span className={`text-[10px] leading-none ${direction === 'asc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9650;</span>
-      <span className={`text-[10px] leading-none ${direction === 'desc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9660;</span>
+    <span className="inline-flex ml-1">
+      <span className="text-[10px] leading-none text-[#202124]">
+        {direction === 'asc' ? '\u25B2' : '\u25BC'}
+      </span>
     </span>
   )
 }
@@ -234,6 +243,10 @@ export default function Page3() {
       let bVal: number
 
       switch (balanceSortKey) {
+        case 'id':
+          return balanceSortDirection === 'asc'
+            ? a.id.localeCompare(b.id)
+            : b.id.localeCompare(a.id)
         case 'balance':
           aVal = a.balance
           bVal = b.balance
@@ -591,7 +604,11 @@ export default function Page3() {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="text-center font-semibold text-[#202124]">광고주 ID</TableHead>
+                    <TableHead className="text-center font-semibold text-[#202124]">
+                      <button onClick={() => handleBalanceSort('id')} className="inline-flex items-center gap-0.5 hover:text-[#1A73E8]">
+                        광고주 ID <SortIcon direction={getBalanceSortDirection('id')} />
+                      </button>
+                    </TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">광고주명</TableHead>
                     <TableHead className="text-center font-semibold text-[#202124]">
                       <div className="inline-flex items-center gap-1.5 justify-center">

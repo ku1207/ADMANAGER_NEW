@@ -270,10 +270,19 @@ function getAllGroupNames(): string[] {
 }
 
 function SortIcon({ direction }: { direction: SortDirection }) {
+  if (!direction) {
+    return (
+      <span className="inline-flex flex-col ml-1 -space-y-1">
+        <span className="text-[10px] leading-none text-[#DADCE0]">&#9650;</span>
+        <span className="text-[10px] leading-none text-[#DADCE0]">&#9660;</span>
+      </span>
+    )
+  }
   return (
-    <span className="inline-flex flex-col ml-1 -space-y-1">
-      <span className={`text-[10px] leading-none ${direction === 'asc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9650;</span>
-      <span className={`text-[10px] leading-none ${direction === 'desc' ? 'text-[#202124]' : 'text-[#DADCE0]'}`}>&#9660;</span>
+    <span className="inline-flex ml-1">
+      <span className="text-[10px] leading-none text-[#202124]">
+        {direction === 'asc' ? '\u25B2' : '\u25BC'}
+      </span>
     </span>
   )
 }
@@ -287,6 +296,75 @@ export default function Page2() {
   const [filterMedia, setFilterMedia] = useState<string>('all')
   const [filterCampaign, setFilterCampaign] = useState<string>('all')
   const [filterGroup, setFilterGroup] = useState<string>('all')
+
+  // 종속 드롭다운 데이터 계산
+  const filteredMediaNames = useMemo(() => {
+    if (filterAccountId === 'all') {
+      return getAllMediaNames()
+    }
+    const medias = MEDIA_DATA[filterAccountId] || []
+    return medias.map(m => m.name)
+  }, [filterAccountId])
+
+  const filteredCampaignNames = useMemo(() => {
+    if (filterAccountId === 'all' && filterMedia === 'all') {
+      return getAllCampaignNames()
+    }
+    const campaignNames = new Set<string>()
+    const accountIds = filterAccountId === 'all' ? getAllAccountIds() : [filterAccountId]
+    accountIds.forEach(accId => {
+      const medias = MEDIA_DATA[accId] || []
+      medias.forEach(m => {
+        if (filterMedia === 'all' || m.name === filterMedia) {
+          const campaigns = CAMPAIGN_DATA[m.id] || []
+          campaigns.forEach(c => campaignNames.add(c.name))
+        }
+      })
+    })
+    return Array.from(campaignNames)
+  }, [filterAccountId, filterMedia])
+
+  const filteredGroupNames = useMemo(() => {
+    if (filterAccountId === 'all' && filterMedia === 'all' && filterCampaign === 'all') {
+      return getAllGroupNames()
+    }
+    const groupNames = new Set<string>()
+    const accountIds = filterAccountId === 'all' ? getAllAccountIds() : [filterAccountId]
+    accountIds.forEach(accId => {
+      const medias = MEDIA_DATA[accId] || []
+      medias.forEach(m => {
+        if (filterMedia === 'all' || m.name === filterMedia) {
+          const campaigns = CAMPAIGN_DATA[m.id] || []
+          campaigns.forEach(c => {
+            if (filterCampaign === 'all' || c.name === filterCampaign) {
+              const groups = GROUP_DATA[c.id] || []
+              groups.forEach(g => groupNames.add(g.name))
+            }
+          })
+        }
+      })
+    })
+    return Array.from(groupNames)
+  }, [filterAccountId, filterMedia, filterCampaign])
+
+  // 상위 필터 변경 시 하위 필터 초기화
+  const handleAccountIdChange = (value: string) => {
+    setFilterAccountId(value)
+    setFilterMedia('all')
+    setFilterCampaign('all')
+    setFilterGroup('all')
+  }
+
+  const handleMediaChange = (value: string) => {
+    setFilterMedia(value)
+    setFilterCampaign('all')
+    setFilterGroup('all')
+  }
+
+  const handleCampaignChange = (value: string) => {
+    setFilterCampaign(value)
+    setFilterGroup('all')
+  }
 
   // 필터 팝업 상태
   const [filterOpen, setFilterOpen] = useState(false)
@@ -717,7 +795,7 @@ export default function Page2() {
         <div className="bg-white rounded-2xl p-6 shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <div className="flex flex-wrap items-center gap-4">
             {/* 드롭다운 필터: 계정 ID */}
-            <Select value={filterAccountId} onValueChange={setFilterAccountId}>
+            <Select value={filterAccountId} onValueChange={handleAccountIdChange}>
               <SelectTrigger className="w-[160px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
                 <SelectValue placeholder="계정 ID" />
               </SelectTrigger>
@@ -730,26 +808,26 @@ export default function Page2() {
             </Select>
 
             {/* 드롭다운 필터: 매체 */}
-            <Select value={filterMedia} onValueChange={setFilterMedia}>
+            <Select value={filterMedia} onValueChange={handleMediaChange}>
               <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
                 <SelectValue placeholder="매체" />
               </SelectTrigger>
               <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
                 <SelectItem value="all">매체 (전체)</SelectItem>
-                {getAllMediaNames().map(name => (
+                {filteredMediaNames.map(name => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             {/* 드롭다운 필터: 캠페인 */}
-            <Select value={filterCampaign} onValueChange={setFilterCampaign}>
+            <Select value={filterCampaign} onValueChange={handleCampaignChange}>
               <SelectTrigger className="w-[180px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]">
                 <SelectValue placeholder="캠페인" />
               </SelectTrigger>
               <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
                 <SelectItem value="all">캠페인 (전체)</SelectItem>
-                {getAllCampaignNames().map(name => (
+                {filteredCampaignNames.map(name => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
               </SelectContent>
@@ -762,7 +840,7 @@ export default function Page2() {
               </SelectTrigger>
               <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
                 <SelectItem value="all">그룹 (전체)</SelectItem>
-                {getAllGroupNames().map(name => (
+                {filteredGroupNames.map(name => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
               </SelectContent>
@@ -787,8 +865,10 @@ export default function Page2() {
                 className="w-[150px] border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
               />
             </div>
+          </div>
 
-            {/* 검색 버튼 */}
+          {/* 검색 버튼 */}
+          <div className="flex justify-end mt-4">
             <Button className="bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]">
               검색
             </Button>
