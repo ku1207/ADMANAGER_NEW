@@ -387,13 +387,25 @@ export default function Page1() {
   const [campaignDropdownOpen, setCampaignDropdownOpen] = useState(false)
 
   // 종속 드롭다운 데이터 계산
+  // 매체는 전체 매체 표시 (최상위 필터)
   const filteredMediaNames = useMemo(() => {
-    if (filterAccountId === 'all') {
-      return getAllMediaNames()
+    return getAllMediaNames()
+  }, [])
+
+  // 광고주 ID: 선택된 매체를 운영하는 광고주만 표시
+  const filteredAccountIds = useMemo(() => {
+    if (filterMedia === 'all') {
+      return getAllAccountIds()
     }
-    const medias = MEDIA_DATA[filterAccountId] || []
-    return medias.map(m => m.name)
-  }, [filterAccountId])
+    const accountIds: string[] = []
+    ACCOUNT_DATA.forEach(acc => {
+      const medias = MEDIA_DATA[acc.id] || []
+      if (medias.some(m => m.name === filterMedia)) {
+        accountIds.push(acc.id)
+      }
+    })
+    return accountIds
+  }, [filterMedia])
 
   const filteredCampaignNames = useMemo(() => {
     if (filterAccountId === 'all' && filterMedia === 'all') {
@@ -437,15 +449,15 @@ export default function Page1() {
   }, [filterAccountId, filterMedia, filterCampaigns])
 
   // 상위 필터 변경 시 하위 필터 초기화
-  const handleAccountIdChange = (value: string) => {
-    setFilterAccountId(value)
-    setFilterMedia('all')
+  const handleMediaChange = (value: string) => {
+    setFilterMedia(value)
+    setFilterAccountId('all')
     setFilterCampaigns([])
     setFilterGroup('all')
   }
 
-  const handleMediaChange = (value: string) => {
-    setFilterMedia(value)
+  const handleAccountIdChange = (value: string) => {
+    setFilterAccountId(value)
     setFilterCampaigns([])
     setFilterGroup('all')
   }
@@ -937,7 +949,7 @@ export default function Page1() {
               </SelectTrigger>
               <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-lg">
                 <SelectItem value="all">광고주 ID (전체)</SelectItem>
-                {getAllAccountIds().map(id => (
+                {filteredAccountIds.map(id => (
                   <SelectItem key={id} value={id}>{id}</SelectItem>
                 ))}
               </SelectContent>
