@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Button,
   Input,
@@ -8,11 +8,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Card, CardContent,
+  RadioGroup, RadioGroupItem,
+  Label,
 } from '@/components/ui'
-import { Mail, RefreshCw, Calendar, Link2, Copy, Send, Loader2, FileText, AlertCircle, CheckCircle2, Plus, Download } from 'lucide-react'
+import { Mail, RefreshCw, Calendar, Link2, Copy, Send, Loader2, FileText, AlertCircle, CheckCircle2, Plus, Download, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type TabType = '메일 AI' | '견적 AI' | '제작 AI' | '보고서 AI'
+type TabType = '메일 AI' | '견적 AI' | '소재 제작 AI' | '보고서 AI'
 type ToneType = '공손한' | '간결한' | '공식적인'
 type QuoteStatus = '진행중' | '완료' | '오류'
 
@@ -41,6 +43,8 @@ interface QuoteItem {
   criteria: string
   pcBudget: number
   mobileBudget: number
+  completedCount?: number
+  errorReason?: string
 }
 
 // 더미 메일 데이터
@@ -121,6 +125,7 @@ const INITIAL_QUOTE_DATA: QuoteItem[] = [
     criteria: '클릭 최대화',
     pcBudget: 2000000,
     mobileBudget: 3000000,
+    completedCount: 150,
   },
   {
     id: 'QT002',
@@ -147,6 +152,7 @@ const INITIAL_QUOTE_DATA: QuoteItem[] = [
     criteria: '클릭 최대화',
     pcBudget: 1000000,
     mobileBudget: 1500000,
+    errorReason: '규격에 맞지 않는 템플릿',
   },
 ]
 
@@ -203,6 +209,57 @@ function getCurrentDateTime(): string {
   return `${y}-${m}-${d} ${h}:${min}`
 }
 
+// 템플릿 다운로드 (엑셀 형식, A1='키워드')
+function handleTemplateDownload() {
+  const content = '\uFEFF키워드'
+  const blob = new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'quote_template.xls'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+// 파일 업로드 영역 컴포넌트
+function FileUploadArea({ file, onFileChange }: { file: File | null; onFileChange: (f: File | null) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const dropped = e.dataTransfer.files[0]
+    if (dropped) onFileChange(dropped)
+  }
+
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+      className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#DADCE0] rounded-xl p-6 cursor-pointer hover:border-[#1A73E8] hover:bg-[#F8F9FA] transition-all duration-200"
+    >
+      <Upload className="h-6 w-6 text-[#80868B]" />
+      {file ? (
+        <p className="text-sm font-medium text-[#202124]">{file.name}</p>
+      ) : (
+        <>
+          <p className="text-sm text-[#5F6368]">파일을 드래그하거나 클릭하여 업로드</p>
+          <p className="text-xs text-[#80868B]">.xls, .xlsx 파일 지원</p>
+        </>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xls,.xlsx"
+        className="hidden"
+        onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+      />
+    </div>
+  )
+}
+
 export default function Page4() {
   const [activeTab, setActiveTab] = useState<TabType>('메일 AI')
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
@@ -215,15 +272,26 @@ export default function Page4() {
 
   // 견적 AI 상태
   const [quoteData, setQuoteData] = useState<QuoteItem[]>(INITIAL_QUOTE_DATA)
-  const [quoteRegisterOpen, setQuoteRegisterOpen] = useState(false)
   const [quoteDetailOpen, setQuoteDetailOpen] = useState(false)
   const [selectedQuote, setSelectedQuote] = useState<QuoteItem | null>(null)
-  const [newQuote, setNewQuote] = useState({
-    keyword: '',
-    media: '',
-    criteria: '',
+
+  // 일반 견적 등록 상태
+  const [normalRegisterOpen, setNormalRegisterOpen] = useState(false)
+  const [normalQuote, setNormalQuote] = useState({
+    name: '',
+    pcRank: '',
+    mobileRank: '',
+    file: null as File | null,
+  })
+
+  // AI 견적 등록 상태
+  const [aiRegisterOpen, setAiRegisterOpen] = useState(false)
+  const [aiQuote, setAiQuote] = useState({
+    name: '',
     pcBudget: '',
     mobileBudget: '',
+    criteria: '클릭 최대화',
+    file: null as File | null,
   })
 
   const selectedEmail = DUMMY_EMAILS.find(e => e.id === selectedEmailId)
@@ -268,27 +336,50 @@ export default function Page4() {
     setIsGenerating(false)
   }
 
-  // 견적 등록 핸들러
-  const handleQuoteSubmit = () => {
-    if (!newQuote.keyword || !newQuote.media || !newQuote.criteria) return
+  // 일반 견적 등록 핸들러
+  const handleNormalQuoteSubmit = () => {
+    if (!normalQuote.name || !normalQuote.pcRank || !normalQuote.mobileRank) return
 
     const newItem: QuoteItem = {
       id: `QT${Date.now()}`,
       no: quoteData.length + 1,
-      name: `${newQuote.keyword} 키워드`,
+      name: normalQuote.name,
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
-      keyword: newQuote.keyword,
-      media: newQuote.media,
-      criteria: newQuote.criteria,
-      pcBudget: parseInt(newQuote.pcBudget) || 0,
-      mobileBudget: parseInt(newQuote.mobileBudget) || 0,
+      keyword: '',
+      media: '',
+      criteria: '',
+      pcBudget: 0,
+      mobileBudget: 0,
     }
 
     setQuoteData([...quoteData, newItem])
-    setNewQuote({ keyword: '', media: '', criteria: '', pcBudget: '', mobileBudget: '' })
-    setQuoteRegisterOpen(false)
+    setNormalQuote({ name: '', pcRank: '', mobileRank: '', file: null })
+    setNormalRegisterOpen(false)
+  }
+
+  // AI 견적 등록 핸들러
+  const handleAiQuoteSubmit = () => {
+    if (!aiQuote.name) return
+
+    const newItem: QuoteItem = {
+      id: `QT${Date.now()}`,
+      no: quoteData.length + 1,
+      name: aiQuote.name,
+      registeredAt: getCurrentDateTime(),
+      worker: 'admin',
+      status: '진행중',
+      keyword: '',
+      media: '',
+      criteria: aiQuote.criteria,
+      pcBudget: parseInt(aiQuote.pcBudget) || 0,
+      mobileBudget: parseInt(aiQuote.mobileBudget) || 0,
+    }
+
+    setQuoteData([...quoteData, newItem])
+    setAiQuote({ name: '', pcBudget: '', mobileBudget: '', criteria: '클릭 최대화', file: null })
+    setAiRegisterOpen(false)
   }
 
   // 등록 상세 보기
@@ -311,7 +402,7 @@ export default function Page4() {
         {/* 탭 영역 */}
         <div className="bg-white rounded-2xl shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <nav className="flex border-b border-[#E8EAED]">
-            {(['메일 AI', '견적 AI', '제작 AI', '보고서 AI'] as TabType[]).map(tab => (
+            {(['견적 AI', '소재 제작 AI', '보고서 AI', '메일 AI'] as TabType[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -576,13 +667,29 @@ export default function Page4() {
           {activeTab === '견적 AI' && (
             <div className="p-6">
               {/* 상단 버튼 영역 */}
-              <div className="flex justify-end mb-4">
+              <div className="flex justify-end gap-2 mb-4">
                 <Button
-                  onClick={() => setQuoteRegisterOpen(true)}
+                  variant="outline"
+                  onClick={handleTemplateDownload}
+                  className="gap-2 border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8] transition-all duration-200"
+                >
+                  <Download className="h-4 w-4" />
+                  템플릿 다운로드
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setNormalRegisterOpen(true)}
+                  className="gap-2 border-[#1A73E8] text-[#1A73E8] rounded-xl hover:bg-[#E8F0FE] transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4" />
+                  일반 견적 등록
+                </Button>
+                <Button
+                  onClick={() => setAiRegisterOpen(true)}
                   className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                 >
                   <Plus className="h-4 w-4" />
-                  견적 등록
+                  AI 견적 등록
                 </Button>
               </div>
 
@@ -611,17 +718,23 @@ export default function Page4() {
                         <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
                         <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
                         <TableCell className="text-center">
-                          <span
-                            className={cn(
-                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                              row.status === '완료' && "bg-[#E6F4EA] text-[#137333]",
-                              row.status === '진행중' && "bg-[#E8F0FE] text-[#1A73E8]",
-                              row.status === '오류' && "bg-[#FCE8E6] text-[#C5221F]"
-                            )}
-                          >
-                            {row.status === '진행중' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                            {row.status}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span
+                              className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                row.status === '완료' && "bg-[#E6F4EA] text-[#137333]",
+                                row.status === '진행중' && "bg-[#E8F0FE] text-[#1A73E8]",
+                                row.status === '오류' && "bg-[#FCE8E6] text-[#C5221F]"
+                              )}
+                            >
+                              {row.status}
+                            </span>
+                            <span className="text-xs text-[#5F6368]">
+                              {row.status === '완료' && `${row.completedCount ?? 0}건 완료`}
+                              {row.status === '진행중' && '-'}
+                              {row.status === '오류' && (row.errorReason ?? '오류 발생')}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <button
@@ -658,15 +771,15 @@ export default function Page4() {
             </div>
           )}
 
-          {/* 제작 AI 탭 */}
-          {activeTab === '제작 AI' && (
+          {/* 소재 제작 AI 탭 */}
+          {activeTab === '소재 제작 AI' && (
             <div className="p-12 flex items-center justify-center min-h-[500px]">
               <Card className="rounded-2xl border-[#E8EAED] shadow-sm">
                 <CardContent className="py-16 px-24 text-center">
                   <div className="w-20 h-20 rounded-full bg-[#F8F9FA] flex items-center justify-center mx-auto mb-4">
                     <FileText className="h-10 w-10 text-[#DADCE0]" />
                   </div>
-                  <h3 className="text-lg font-semibold text-[#202124] mb-2">제작 AI</h3>
+                  <h3 className="text-lg font-semibold text-[#202124] mb-2">소재 제작 AI</h3>
                   <p className="text-[#5F6368]">준비 중인 기능입니다.</p>
                 </CardContent>
               </Card>
@@ -748,83 +861,166 @@ export default function Page4() {
         </DialogContent>
       </Dialog>
 
-      {/* 견적 등록 다이얼로그 */}
-      <Dialog open={quoteRegisterOpen} onOpenChange={setQuoteRegisterOpen}>
+      {/* 일반 견적 등록 다이얼로그 */}
+      <Dialog open={normalRegisterOpen} onOpenChange={setNormalRegisterOpen}>
         <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[#202124] text-lg font-semibold">견적 등록</DialogTitle>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">일반 견적 등록</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* 작업 이름 */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">키워드</label>
+              <label className="block text-sm font-medium text-[#5F6368]">작업 이름</label>
               <Input
-                placeholder="키워드를 입력해주세요."
-                value={newQuote.keyword}
-                onChange={(e) => setNewQuote({ ...newQuote, keyword: e.target.value })}
+                placeholder="작업 이름을 입력해주세요."
+                value={normalQuote.name}
+                onChange={(e) => setNormalQuote({ ...normalQuote, name: e.target.value })}
                 className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
               />
             </div>
+            {/* 파일 업로드 */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">매체</label>
-              <Select value={newQuote.media} onValueChange={(v) => setNewQuote({ ...newQuote, media: v })}>
+              <label className="block text-sm font-medium text-[#5F6368]">파일 업로드</label>
+              <FileUploadArea
+                file={normalQuote.file}
+                onFileChange={(f) => setNormalQuote({ ...normalQuote, file: f })}
+              />
+            </div>
+            {/* PC 목표 순위 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">PC 목표 순위</label>
+              <Select value={normalQuote.pcRank} onValueChange={(v) => setNormalQuote({ ...normalQuote, pcRank: v })}>
                 <SelectTrigger className="w-full border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
-                  <SelectValue placeholder="매체" />
+                  <SelectValue placeholder="PC 순위 선택" />
                 </SelectTrigger>
                 <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
-                  <SelectItem value="네이버 검색광고" className="rounded-lg hover:bg-[#F8F9FA]">네이버 검색광고</SelectItem>
-                  <SelectItem value="브랜드검색" className="rounded-lg hover:bg-[#F8F9FA]">브랜드검색</SelectItem>
-                  <SelectItem value="카카오 키워드" className="rounded-lg hover:bg-[#F8F9FA]">카카오 키워드</SelectItem>
-                  <SelectItem value="구글 검색광고" className="rounded-lg hover:bg-[#F8F9FA]">구글 검색광고</SelectItem>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(rank => (
+                    <SelectItem key={rank} value={String(rank)} className="rounded-lg hover:bg-[#F8F9FA]">
+                      {rank}위
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+            {/* Mobile 목표 순위 */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">기준</label>
-              <Select value={newQuote.criteria} onValueChange={(v) => setNewQuote({ ...newQuote, criteria: v })}>
+              <label className="block text-sm font-medium text-[#5F6368]">Mobile 목표 순위</label>
+              <Select value={normalQuote.mobileRank} onValueChange={(v) => setNormalQuote({ ...normalQuote, mobileRank: v })}>
                 <SelectTrigger className="w-full border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
-                  <SelectValue placeholder="기준" />
+                  <SelectValue placeholder="Mobile 순위 선택" />
                 </SelectTrigger>
                 <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
-                  <SelectItem value="노출 최대화" className="rounded-lg hover:bg-[#F8F9FA]">노출 최대화</SelectItem>
-                  <SelectItem value="클릭 최대화" className="rounded-lg hover:bg-[#F8F9FA]">클릭 최대화</SelectItem>
+                  {Array.from({ length: 5 }, (_, i) => i + 1).map(rank => (
+                    <SelectItem key={rank} value={String(rank)} className="rounded-lg hover:bg-[#F8F9FA]">
+                      {rank}위
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">PC 예산</label>
-              <Input
-                type="number"
-                placeholder="PC 월 예산을 입력해주세요."
-                value={newQuote.pcBudget}
-                onChange={(e) => setNewQuote({ ...newQuote, pcBudget: e.target.value.replace(/[^0-9]/g, '') })}
-                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">Mobile 예산</label>
-              <Input
-                type="number"
-                placeholder="Mobile 월 예산을 입력해주세요."
-                value={newQuote.mobileBudget}
-                onChange={(e) => setNewQuote({ ...newQuote, mobileBudget: e.target.value.replace(/[^0-9]/g, '') })}
-                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
-              />
             </div>
           </div>
           <DialogFooter className="flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
-                setQuoteRegisterOpen(false)
-                setNewQuote({ keyword: '', media: '', criteria: '', pcBudget: '', mobileBudget: '' })
+                setNormalRegisterOpen(false)
+                setNormalQuote({ name: '', pcRank: '', mobileRank: '', file: null })
               }}
               className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
             >
               취소
             </Button>
             <Button
-              onClick={handleQuoteSubmit}
-              disabled={!newQuote.keyword || !newQuote.media || !newQuote.criteria}
+              onClick={handleNormalQuoteSubmit}
+              disabled={!normalQuote.name || !normalQuote.pcRank || !normalQuote.mobileRank}
+              className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              등록
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI 견적 등록 다이얼로그 */}
+      <Dialog open={aiRegisterOpen} onOpenChange={setAiRegisterOpen}>
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">AI 견적 등록</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 작업 이름 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">작업 이름</label>
+              <Input
+                placeholder="작업 이름을 입력해주세요."
+                value={aiQuote.name}
+                onChange={(e) => setAiQuote({ ...aiQuote, name: e.target.value })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            {/* 파일 업로드 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">파일 업로드</label>
+              <FileUploadArea
+                file={aiQuote.file}
+                onFileChange={(f) => setAiQuote({ ...aiQuote, file: f })}
+              />
+            </div>
+            {/* PC 예산 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">PC 예산(원)</label>
+              <Input
+                type="number"
+                placeholder="PC 예산을 입력해주세요."
+                value={aiQuote.pcBudget}
+                onChange={(e) => setAiQuote({ ...aiQuote, pcBudget: e.target.value.replace(/[^0-9]/g, '') })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            {/* Mobile 예산 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">Mobile 예산(원)</label>
+              <Input
+                type="number"
+                placeholder="Mobile 예산을 입력해주세요."
+                value={aiQuote.mobileBudget}
+                onChange={(e) => setAiQuote({ ...aiQuote, mobileBudget: e.target.value.replace(/[^0-9]/g, '') })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            {/* 최적화 기준 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">최적화 기준</label>
+              <RadioGroup
+                value={aiQuote.criteria}
+                onValueChange={(v) => setAiQuote({ ...aiQuote, criteria: v })}
+                className="flex gap-6"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="클릭 최대화" id="criteria-click" className="border-[#DADCE0] text-[#1A73E8]" />
+                  <Label htmlFor="criteria-click" className="text-sm text-[#202124] cursor-pointer">클릭 최대화</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="노출 최대화" id="criteria-exposure" className="border-[#DADCE0] text-[#1A73E8]" />
+                  <Label htmlFor="criteria-exposure" className="text-sm text-[#202124] cursor-pointer">노출 최대화</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAiRegisterOpen(false)
+                setAiQuote({ name: '', pcBudget: '', mobileBudget: '', criteria: '클릭 최대화', file: null })
+              }}
+              className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleAiQuoteSubmit}
+              disabled={!aiQuote.name}
               className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               등록
@@ -844,15 +1040,15 @@ export default function Page4() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">키워드</p>
-                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.keyword}</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.keyword || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">매체</p>
-                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.media}</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.media || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">기준</p>
-                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.criteria}</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.criteria || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">상태</p>
@@ -860,11 +1056,11 @@ export default function Page4() {
                 </div>
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">PC 예산</p>
-                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.pcBudget.toLocaleString()}원</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.pcBudget ? `${selectedQuote.pcBudget.toLocaleString()}원` : '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#5F6368] mb-1">Mobile 예산</p>
-                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.mobileBudget.toLocaleString()}원</p>
+                  <p className="text-sm font-medium text-[#202124]">{selectedQuote.mobileBudget ? `${selectedQuote.mobileBudget.toLocaleString()}원` : '-'}</p>
                 </div>
               </div>
             </div>
