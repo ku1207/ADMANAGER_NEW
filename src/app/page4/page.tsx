@@ -11,7 +11,7 @@ import {
   RadioGroup, RadioGroupItem,
   Label,
 } from '@/components/ui'
-import { FileText, Plus, Download, Upload, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare } from 'lucide-react'
+import { FileText, Plus, Download, Upload, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TabType = '검색광고 견적 AI' | '브랜드검색광고 견적 AI' | '소재 제작 AI' | '보고서 AI' | '메일 AI'
@@ -145,6 +145,8 @@ const PC_SEARCHES  = [45200, 12300, 8700, 31000, 22500, 9800, 18400, 6200, 27300
 const MOB_SEARCHES = [72400, 19800, 14200, 58600, 39100, 17300, 31200, 9400, 44700, 7600]
 const PC_CLICKS    = [1446,  221,   218,   1271,  653,   127,   681,   56,   601,   45]
 const MOB_CLICKS   = [4054,  614,   596,   3985,  1916,  415,   1654,  160,  1699,  144]
+
+const KW_PAGE_SIZE = 30
 
 function generateKeywordData(brandName: string): KeywordData[] {
   return KEYWORD_SUFFIXES.map((suffix, i) => ({
@@ -337,6 +339,9 @@ export default function Page4() {
   const [autoSelectMinSearch, setAutoSelectMinSearch] = useState('')
   const [autoSelectDevice, setAutoSelectDevice] = useState<'PC' | 'Mobile'>('PC')
 
+  // 키워드 테이블 페이지네이션
+  const [kwPage, setKwPage] = useState(1)
+
   // brandDetailItem 변경 시 키워드 데이터 초기화
   useEffect(() => {
     if (brandDetailItem) {
@@ -346,6 +351,7 @@ export default function Page4() {
       setSortDir('desc')
       setAutoSelectMinSearch('')
       setAutoSelectDevice('PC')
+      setKwPage(1)
     }
   }, [brandDetailItem])
 
@@ -360,9 +366,17 @@ export default function Page4() {
     })
   }, [keywordData, sortField, sortDir])
 
+  // 키워드 페이지네이션
+  const totalKwPages = Math.ceil(sortedKeywords.length / KW_PAGE_SIZE)
+  const pagedKeywords = useMemo(() =>
+    sortedKeywords.slice((kwPage - 1) * KW_PAGE_SIZE, kwPage * KW_PAGE_SIZE),
+    [sortedKeywords, kwPage]
+  )
+
   const handleSort = (field: keyof KeywordData) => {
     if (sortField === field) setSortDir(p => p === 'asc' ? 'desc' : 'asc')
     else { setSortField(field); setSortDir('desc') }
+    setKwPage(1)
   }
 
   // 전체/개별 체크박스
@@ -678,7 +692,7 @@ export default function Page4() {
                   )}
 
                   {/* 키워드 테이블 */}
-                  <Card className="rounded-2xl border-[#E8EAED] overflow-hidden shadow-sm">
+                  <Card className="rounded-2xl border-[#E8EAED] overflow-hidden shadow-sm" id="kw-table-top">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
@@ -713,7 +727,7 @@ export default function Page4() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sortedKeywords.map((kw, index) => {
+                        {pagedKeywords.map((kw, index) => {
                           const checked = checkedIds.has(kw.id)
                           return (
                             <TableRow
@@ -722,7 +736,7 @@ export default function Page4() {
                               className={cn(
                                 "cursor-pointer transition-colors",
                                 checked ? "bg-[#F0F4FF]" : "hover:bg-[#F8F9FA]",
-                                index < sortedKeywords.length - 1 && "border-b border-[#E8EAED]"
+                                index < pagedKeywords.length - 1 && "border-b border-[#E8EAED]"
                               )}
                             >
                               <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -753,11 +767,53 @@ export default function Page4() {
                       </TableBody>
                     </Table>
                   </Card>
+
+                  {/* 페이지네이션 */}
+                  {totalKwPages > 1 && (
+                    <div className="flex items-center justify-center gap-1 mt-4">
+                      <button
+                        onClick={() => { setKwPage(p => Math.max(1, p - 1)); document.getElementById('kw-table-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                        disabled={kwPage === 1}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg border border-[#E8EAED] text-[#5F6368] hover:bg-[#F8F9FA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      {Array.from({ length: totalKwPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => { setKwPage(page); document.getElementById('kw-table-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                          className={cn(
+                            "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
+                            kwPage === page
+                              ? "bg-[#1A73E8] text-white"
+                              : "border border-[#E8EAED] text-[#5F6368] hover:bg-[#F8F9FA]"
+                          )}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => { setKwPage(p => Math.min(totalKwPages, p + 1)); document.getElementById('kw-table-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                        disabled={kwPage === totalKwPages}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg border border-[#E8EAED] text-[#5F6368] hover:bg-[#F8F9FA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <span className="ml-2 text-xs text-[#80868B]">{kwPage} / {totalKwPages} 페이지 ({sortedKeywords.length}개)</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* ── 목록 뷰 ── */
                 <div>
                   <div className="flex justify-end gap-2 mb-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleTemplateDownload}
+                      className="gap-2 border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8] transition-all duration-200"
+                    >
+                      <Download className="h-4 w-4" />템플릿 다운로드
+                    </Button>
                     <Button
                       onClick={() => setBrandRegisterOpen(true)}
                       className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
