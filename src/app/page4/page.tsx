@@ -40,7 +40,6 @@ interface BrandQuoteItem {
   no: number
   name: string
   brandName: string
-  device: 'PC' | 'Mobile'
   registeredAt: string
   worker: string
   status: QuoteStatus
@@ -53,11 +52,10 @@ interface KeywordData {
   keyword: string
   pcMonthlySearch: number
   mobileMonthlySearch: number
+  pcClicks: number
+  mobileClicks: number
   pcCtr: number
   mobileCtr: number
-  competition: '높음' | '중간' | '낮음'
-  pcAvgCpc: number
-  mobileAvgCpc: number
 }
 
 // 검색광고 견적 더미 데이터
@@ -115,7 +113,6 @@ const INITIAL_BRAND_QUOTE_DATA: BrandQuoteItem[] = [
     no: 1,
     name: '화장품 브랜드',
     brandName: '뷰티코리아',
-    device: 'PC',
     registeredAt: '2026-02-05 15:00',
     worker: 'admin',
     status: '완료',
@@ -126,7 +123,6 @@ const INITIAL_BRAND_QUOTE_DATA: BrandQuoteItem[] = [
     no: 2,
     name: '스포츠 브랜드',
     brandName: '스포츠월드',
-    device: 'Mobile',
     registeredAt: '2026-02-06 10:00',
     worker: 'admin',
     status: '진행중',
@@ -136,7 +132,6 @@ const INITIAL_BRAND_QUOTE_DATA: BrandQuoteItem[] = [
     no: 3,
     name: '식품 브랜드',
     brandName: '푸드랩',
-    device: 'PC',
     registeredAt: '2026-02-06 11:30',
     worker: 'admin',
     status: '오류',
@@ -144,15 +139,12 @@ const INITIAL_BRAND_QUOTE_DATA: BrandQuoteItem[] = [
   },
 ]
 
-// 키워드 더미 데이터 생성 (브랜드명 기반, 결정적)
+// 키워드 더미 데이터 생성 (결정적)
 const KEYWORD_SUFFIXES = ['정품', '할인', '추천', '리뷰', '가격', '구매', '후기', '공식', '쇼핑', '이벤트']
-const PC_SEARCHES   = [45200, 12300, 8700, 31000, 22500, 9800, 18400, 6200, 27300, 4100]
-const MOB_SEARCHES  = [72400, 19800, 14200, 58600, 39100, 17300, 31200, 9400, 44700, 7600]
-const PC_CTRS       = [3.2, 1.8, 2.5, 4.1, 2.9, 1.3, 3.7, 0.9, 2.2, 1.1]
-const MOB_CTRS      = [5.6, 3.1, 4.2, 6.8, 4.9, 2.4, 5.3, 1.7, 3.8, 1.9]
-const COMPETITIONS  = ['높음', '중간', '낮음', '높음', '중간', '중간', '낮음', '낮음', '높음', '중간'] as const
-const PC_CPCS       = [1850, 720, 950, 2100, 1340, 480, 1620, 290, 1150, 380]
-const MOB_CPCS      = [1420, 560, 730, 1680, 1050, 370, 1240, 220, 890, 290]
+const PC_SEARCHES  = [45200, 12300, 8700, 31000, 22500, 9800, 18400, 6200, 27300, 4100]
+const MOB_SEARCHES = [72400, 19800, 14200, 58600, 39100, 17300, 31200, 9400, 44700, 7600]
+const PC_CLICKS    = [1446,  221,   218,   1271,  653,   127,   681,   56,   601,   45]
+const MOB_CLICKS   = [4054,  614,   596,   3985,  1916,  415,   1654,  160,  1699,  144]
 
 function generateKeywordData(brandName: string): KeywordData[] {
   return KEYWORD_SUFFIXES.map((suffix, i) => ({
@@ -160,36 +152,28 @@ function generateKeywordData(brandName: string): KeywordData[] {
     keyword: `${brandName} ${suffix}`,
     pcMonthlySearch: PC_SEARCHES[i],
     mobileMonthlySearch: MOB_SEARCHES[i],
-    pcCtr: PC_CTRS[i],
-    mobileCtr: MOB_CTRS[i],
-    competition: COMPETITIONS[i],
-    pcAvgCpc: PC_CPCS[i],
-    mobileAvgCpc: MOB_CPCS[i],
+    pcClicks: PC_CLICKS[i],
+    mobileClicks: MOB_CLICKS[i],
+    pcCtr: Math.round(PC_CLICKS[i] / PC_SEARCHES[i] * 1000) / 10,
+    mobileCtr: Math.round(MOB_CLICKS[i] / MOB_SEARCHES[i] * 1000) / 10,
   }))
 }
 
-// 그리디 배낭 알고리즘 (ILP 근사) - 예산 내 최대 노출량 선택
-function autoSelectByBudget(keywords: KeywordData[], budgetWon: number, device: 'PC' | 'Mobile'): Set<string> {
-  const cpcField: keyof KeywordData  = device === 'PC' ? 'pcAvgCpc' : 'mobileAvgCpc'
-  const searchField: keyof KeywordData = device === 'PC' ? 'pcMonthlySearch' : 'mobileMonthlySearch'
-  const sorted = [...keywords].sort((a, b) => {
-    const ratioA = (a[searchField] as number) / (a[cpcField] as number)
-    const ratioB = (b[searchField] as number) / (b[cpcField] as number)
-    return ratioB - ratioA
-  })
+// 검색수 기준 자동 선택 - 최소 검색수 이상인 키워드 선택
+function autoSelectByMinSearch(
+  keywords: KeywordData[],
+  minSearch: number,
+  device: 'PC' | 'Mobile'
+): Set<string> {
+  const field: keyof KeywordData = device === 'PC' ? 'pcMonthlySearch' : 'mobileMonthlySearch'
   const selected = new Set<string>()
-  let remaining = budgetWon
-  for (const kw of sorted) {
-    const cost = kw[cpcField] as number
-    if (remaining >= cost) {
-      selected.add(kw.id)
-      remaining -= cost
-    }
+  for (const kw of keywords) {
+    if ((kw[field] as number) >= minSearch) selected.add(kw.id)
   }
   return selected
 }
 
-// 엑셀(CSV) 다운로드 헬퍼
+// 엑셀(TSV+BOM) 다운로드 헬퍼
 function downloadAsXlsx(rows: string[][], filename: string) {
   const tsv = rows.map(r => r.join('\t')).join('\n')
   const blob = new Blob(['\uFEFF' + tsv], { type: 'application/vnd.ms-excel;charset=utf-8;' })
@@ -228,7 +212,6 @@ function handleTemplateDownload() {
 
 function FileUploadArea({ file, onFileChange }: { file: File | null; onFileChange: (f: File | null) => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
-
   return (
     <div
       onClick={() => inputRef.current?.click()}
@@ -328,30 +311,19 @@ export default function Page4() {
   // 일반 견적 등록
   const [normalRegisterOpen, setNormalRegisterOpen] = useState(false)
   const [normalQuote, setNormalQuote] = useState({
-    name: '',
-    pcRank: '',
-    mobileRank: '',
-    file: null as File | null,
+    name: '', pcRank: '', mobileRank: '', file: null as File | null,
   })
 
   // AI 견적 등록
   const [aiRegisterOpen, setAiRegisterOpen] = useState(false)
   const [aiQuote, setAiQuote] = useState({
-    name: '',
-    pcBudget: '',
-    mobileBudget: '',
-    criteria: '클릭 최대화',
-    file: null as File | null,
+    name: '', pcBudget: '', mobileBudget: '', criteria: '클릭 최대화', file: null as File | null,
   })
 
   // 브랜드검색광고 견적 AI
   const [brandQuoteData, setBrandQuoteData] = useState<BrandQuoteItem[]>(INITIAL_BRAND_QUOTE_DATA)
   const [brandRegisterOpen, setBrandRegisterOpen] = useState(false)
-  const [brandQuote, setBrandQuote] = useState({
-    name: '',
-    brandName: '',
-    device: 'PC' as 'PC' | 'Mobile',
-  })
+  const [brandQuote, setBrandQuote] = useState({ name: '', brandName: '' })
   const [brandDetailItem, setBrandDetailItem] = useState<BrandQuoteItem | null>(null)
 
   // 브랜드 상세 - 키워드 테이블
@@ -362,7 +334,7 @@ export default function Page4() {
 
   // 자동 선택 다이얼로그
   const [autoSelectOpen, setAutoSelectOpen] = useState(false)
-  const [autoSelectBudget, setAutoSelectBudget] = useState('')
+  const [autoSelectMinSearch, setAutoSelectMinSearch] = useState('')
   const [autoSelectDevice, setAutoSelectDevice] = useState<'PC' | 'Mobile'>('PC')
 
   // brandDetailItem 변경 시 키워드 데이터 초기화
@@ -372,46 +344,33 @@ export default function Page4() {
       setCheckedIds(new Set())
       setSortField(null)
       setSortDir('desc')
-      setAutoSelectBudget('')
-      setAutoSelectDevice(brandDetailItem.device)
+      setAutoSelectMinSearch('')
+      setAutoSelectDevice('PC')
     }
   }, [brandDetailItem])
 
-  // 정렬된 키워드 목록
+  // 키워드 정렬
   const sortedKeywords = useMemo(() => {
     if (!sortField) return keywordData
     return [...keywordData].sort((a, b) => {
-      const av = a[sortField]
-      const bv = b[sortField]
-      if (typeof av === 'number' && typeof bv === 'number') {
+      const av = a[sortField], bv = b[sortField]
+      if (typeof av === 'number' && typeof bv === 'number')
         return sortDir === 'asc' ? av - bv : bv - av
-      }
       return 0
     })
   }, [keywordData, sortField, sortDir])
 
-  // 정렬 토글 핸들러
   const handleSort = (field: keyof KeywordData) => {
-    if (sortField === field) {
-      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDir('desc')
-    }
+    if (sortField === field) setSortDir(p => p === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('desc') }
   }
 
-  // 전체 체크박스
+  // 전체/개별 체크박스
   const allChecked = keywordData.length > 0 && checkedIds.size === keywordData.length
   const someChecked = checkedIds.size > 0 && !allChecked
-
   const toggleAll = () => {
-    if (allChecked) {
-      setCheckedIds(new Set())
-    } else {
-      setCheckedIds(new Set(keywordData.map(k => k.id)))
-    }
+    setCheckedIds(allChecked ? new Set() : new Set(keywordData.map(k => k.id)))
   }
-
   const toggleOne = (id: string) => {
     setCheckedIds(prev => {
       const next = new Set(prev)
@@ -420,45 +379,44 @@ export default function Page4() {
     })
   }
 
-  // 선택된 키워드의 합계 계산
+  // 선택 합산
   const checkedKeywords = keywordData.filter(k => checkedIds.has(k.id))
-  const totalPcBudget = checkedKeywords.reduce((s, k) => s + k.pcAvgCpc, 0)
-  const totalMobBudget = checkedKeywords.reduce((s, k) => s + k.mobileAvgCpc, 0)
-  const totalPcSearch = checkedKeywords.reduce((s, k) => s + k.pcMonthlySearch, 0)
-  const totalMobSearch = checkedKeywords.reduce((s, k) => s + k.mobileMonthlySearch, 0)
+  const totalPcSearch   = checkedKeywords.reduce((s, k) => s + k.pcMonthlySearch, 0)
+  const totalMobSearch  = checkedKeywords.reduce((s, k) => s + k.mobileMonthlySearch, 0)
+  const totalPcClicks   = checkedKeywords.reduce((s, k) => s + k.pcClicks, 0)
+  const totalMobClicks  = checkedKeywords.reduce((s, k) => s + k.mobileClicks, 0)
+  const totalPcCtr      = totalPcSearch  > 0 ? Math.round(totalPcClicks  / totalPcSearch  * 1000) / 10 : 0
+  const totalMobCtr     = totalMobSearch > 0 ? Math.round(totalMobClicks / totalMobSearch * 1000) / 10 : 0
 
-  // 자동 선택 핸들러
+  // 자동 선택 (최소 검색수 기준)
   const handleAutoSelect = () => {
-    const budget = parseInt(autoSelectBudget.replace(/,/g, ''))
-    if (!budget || budget <= 0) return
-    const selected = autoSelectByBudget(keywordData, budget, autoSelectDevice)
-    setCheckedIds(selected)
+    const min = parseInt(autoSelectMinSearch.replace(/,/g, ''))
+    if (!min || min <= 0) return
+    setCheckedIds(autoSelectByMinSearch(keywordData, min, autoSelectDevice))
     setAutoSelectOpen(false)
-    setAutoSelectBudget('')
+    setAutoSelectMinSearch('')
   }
 
-  // 견적 다운로드 (선택된 키워드를 엑셀로)
+  // 견적 다운로드
   const handleQuoteDownload = () => {
     if (!brandDetailItem) return
-    const device = brandDetailItem.device
     const rows: string[][] = [
-      ['키워드', 'PC 월간검색수', '모바일 월간검색수', 'PC CTR(%)', '모바일 CTR(%)', '경쟁도', 'PC 평균CPC(원)', '모바일 평균CPC(원)'],
+      ['키워드', 'PC 월간검색', 'Mobile 월간검색', 'PC 클릭수', 'Mobile 클릭수', 'PC CTR(%)', 'Mobile CTR(%)'],
       ...checkedKeywords.map(k => [
         k.keyword,
         String(k.pcMonthlySearch),
         String(k.mobileMonthlySearch),
+        String(k.pcClicks),
+        String(k.mobileClicks),
         String(k.pcCtr),
         String(k.mobileCtr),
-        k.competition,
-        String(k.pcAvgCpc),
-        String(k.mobileAvgCpc),
       ]),
     ]
-    const filename = `${brandDetailItem.brandName}_${device}_견적서_${getCurrentDateTime().replace(' ', '_').replace(/:/g, '')}.xlsx`
+    const filename = `${brandDetailItem.brandName}_견적서_${getCurrentDateTime().replace(' ', '_').replace(/:/g, '')}.xlsx`
     downloadAsXlsx(rows, filename)
   }
 
-  // 일반 견적 등록 핸들러
+  // 일반 견적 등록
   const handleNormalQuoteSubmit = () => {
     if (!normalQuote.name || !normalQuote.pcRank || !normalQuote.mobileRank) return
     const id = `QT${Date.now()}`
@@ -470,11 +428,7 @@ export default function Page4() {
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
-      keyword: '',
-      media: '',
-      criteria: '',
-      pcBudget: 0,
-      mobileBudget: 0,
+      keyword: '', media: '', criteria: '', pcBudget: 0, mobileBudget: 0,
     }
     if (normalQuote.file) setRegistrationFiles(prev => ({ ...prev, [id]: normalQuote.file! }))
     setQuoteData([...quoteData, newItem])
@@ -482,7 +436,7 @@ export default function Page4() {
     setNormalRegisterOpen(false)
   }
 
-  // AI 견적 등록 핸들러
+  // AI 견적 등록
   const handleAiQuoteSubmit = () => {
     if (!aiQuote.name) return
     const id = `QT${Date.now()}`
@@ -494,8 +448,7 @@ export default function Page4() {
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
-      keyword: '',
-      media: '',
+      keyword: '', media: '',
       criteria: aiQuote.criteria,
       pcBudget: parseInt(aiQuote.pcBudget) || 0,
       mobileBudget: parseInt(aiQuote.mobileBudget) || 0,
@@ -506,7 +459,7 @@ export default function Page4() {
     setAiRegisterOpen(false)
   }
 
-  // 브랜드검색광고 견적 등록 핸들러
+  // 브랜드 견적 등록
   const handleBrandQuoteSubmit = () => {
     if (!brandQuote.name || !brandQuote.brandName) return
     const newItem: BrandQuoteItem = {
@@ -514,37 +467,39 @@ export default function Page4() {
       no: brandQuoteData.length + 1,
       name: brandQuote.name,
       brandName: brandQuote.brandName,
-      device: brandQuote.device,
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
     }
     setBrandQuoteData([...brandQuoteData, newItem])
-    setBrandQuote({ name: '', brandName: '', device: 'PC' })
+    setBrandQuote({ name: '', brandName: '' })
     setBrandRegisterOpen(false)
   }
 
   // 등록 파일 다운로드
   const handleRegistrationDownload = (quoteId: string) => {
     const file = registrationFiles[quoteId]
-    if (!file) {
-      alert('업로드된 파일이 없습니다.')
-      return
-    }
+    if (!file) { alert('업로드된 파일이 없습니다.'); return }
     const url = URL.createObjectURL(file)
     const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    link.href = url; link.download = file.name
+    document.body.appendChild(link); link.click()
+    document.body.removeChild(link); URL.revokeObjectURL(url)
   }
 
-  // 결과 다운로드
   const handleResultDownload = (quote: QuoteItem) => {
     alert(`${quote.name} 견적서를 다운로드합니다.`)
   }
+
+  // 등록시간 내림차순 정렬 (신규 상단) - No는 원래 순서 유지
+  const sortedQuoteRows = useMemo(() =>
+    [...quoteData].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)),
+    [quoteData]
+  )
+  const sortedBrandRows = useMemo(() =>
+    [...brandQuoteData].sort((a, b) => b.registeredAt.localeCompare(a.registeredAt)),
+    [brandQuoteData]
+  )
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -563,9 +518,7 @@ export default function Page4() {
                 }}
                 className={cn(
                   "relative px-6 py-4 text-sm font-medium transition-all duration-200 whitespace-nowrap",
-                  activeTab === tab
-                    ? "text-[#1A73E8]"
-                    : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F8F9FA]"
+                  activeTab === tab ? "text-[#1A73E8]" : "text-[#5F6368] hover:text-[#202124] hover:bg-[#F8F9FA]"
                 )}
               >
                 {tab}
@@ -585,23 +538,20 @@ export default function Page4() {
                   onClick={handleTemplateDownload}
                   className="gap-2 border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8] transition-all duration-200"
                 >
-                  <Download className="h-4 w-4" />
-                  템플릿 다운로드
+                  <Download className="h-4 w-4" />템플릿 다운로드
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setNormalRegisterOpen(true)}
                   className="gap-2 border-[#1A73E8] text-[#1A73E8] rounded-xl hover:bg-[#E8F0FE] transition-all duration-200"
                 >
-                  <Plus className="h-4 w-4" />
-                  일반 견적 등록
+                  <Plus className="h-4 w-4" />일반 견적 등록
                 </Button>
                 <Button
                   onClick={() => setAiRegisterOpen(true)}
                   className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                 >
-                  <Plus className="h-4 w-4" />
-                  AI 견적 등록
+                  <Plus className="h-4 w-4" />AI 견적 등록
                 </Button>
               </div>
 
@@ -620,10 +570,10 @@ export default function Page4() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {quoteData.map((row, index) => (
+                    {sortedQuoteRows.map((row, index) => (
                       <TableRow
                         key={row.id}
-                        className={`hover:bg-[#F8F9FA] transition-colors ${index < quoteData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                        className={`hover:bg-[#F8F9FA] transition-colors ${index < sortedQuoteRows.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
                       >
                         <TableCell className="text-center text-[#5F6368]">{row.no}</TableCell>
                         <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
@@ -637,13 +587,7 @@ export default function Page4() {
                         </TableCell>
                         <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
                         <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
-
-                        <StatusCell
-                          status={row.status}
-                          completedCount={row.completedCount}
-                          errorReason={row.errorReason}
-                        />
-
+                        <StatusCell status={row.status} completedCount={row.completedCount} errorReason={row.errorReason} />
                         <TableCell className="text-center">
                           <button
                             onClick={() => handleRegistrationDownload(row.id)}
@@ -653,7 +597,6 @@ export default function Page4() {
                             <Download className="h-4 w-4 text-[#5F6368]" />
                           </button>
                         </TableCell>
-
                         <TableCell className="text-center">
                           {row.status === '완료' && (
                             <button
@@ -667,7 +610,7 @@ export default function Page4() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {quoteData.length === 0 && (
+                    {sortedQuoteRows.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-12 text-[#5F6368]">
                           등록된 견적이 없습니다.
@@ -686,7 +629,6 @@ export default function Page4() {
               {brandDetailItem ? (
                 /* ── 상세 페이지 뷰 ── */
                 <div>
-                  {/* 상단 헤더 */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <button
@@ -697,8 +639,10 @@ export default function Page4() {
                         <ArrowLeft className="h-5 w-5" />
                       </button>
                       <div>
-                        <h2 className="text-xl font-bold text-[#202124]">{brandDetailItem.brandName}</h2>
-                        <p className="text-sm text-[#5F6368] mt-0.5">{brandDetailItem.name} · {brandDetailItem.device}</p>
+                        <h2 className="text-xl font-bold text-[#202124]">
+                          {brandDetailItem.brandName}·({keywordData.length}개)
+                        </h2>
+                        <p className="text-sm text-[#5F6368] mt-0.5">{brandDetailItem.name}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -707,8 +651,7 @@ export default function Page4() {
                         onClick={() => setAutoSelectOpen(true)}
                         className="gap-2 border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8] transition-all duration-200"
                       >
-                        <CheckSquare className="h-4 w-4" />
-                        자동 선택
+                        <CheckSquare className="h-4 w-4" />자동 선택
                       </Button>
                       <Button
                         onClick={handleQuoteDownload}
@@ -723,12 +666,14 @@ export default function Page4() {
 
                   {/* 선택 요약 바 */}
                   {checkedIds.size > 0 && (
-                    <div className="mb-4 px-4 py-3 bg-[#E8F0FE] border border-[#C5D8FC] rounded-xl flex items-center gap-6 text-sm">
+                    <div className="mb-4 px-4 py-3 bg-[#E8F0FE] border border-[#C5D8FC] rounded-xl flex flex-wrap items-center gap-4 text-sm">
                       <span className="font-semibold text-[#1A73E8]">{checkedIds.size}개 선택됨</span>
                       <span className="text-[#5F6368]">PC 월간검색: <strong className="text-[#202124]">{totalPcSearch.toLocaleString()}</strong></span>
-                      <span className="text-[#5F6368]">모바일 월간검색: <strong className="text-[#202124]">{totalMobSearch.toLocaleString()}</strong></span>
-                      <span className="text-[#5F6368]">PC 예상비용: <strong className="text-[#202124]">{totalPcBudget.toLocaleString()}원</strong></span>
-                      <span className="text-[#5F6368]">모바일 예상비용: <strong className="text-[#202124]">{totalMobBudget.toLocaleString()}원</strong></span>
+                      <span className="text-[#5F6368]">Mobile 월간검색: <strong className="text-[#202124]">{totalMobSearch.toLocaleString()}</strong></span>
+                      <span className="text-[#5F6368]">PC 클릭수: <strong className="text-[#202124]">{totalPcClicks.toLocaleString()}</strong></span>
+                      <span className="text-[#5F6368]">Mobile 클릭수: <strong className="text-[#202124]">{totalMobClicks.toLocaleString()}</strong></span>
+                      <span className="text-[#5F6368]">PC CTR: <strong className="text-[#202124]">{totalPcCtr}%</strong></span>
+                      <span className="text-[#5F6368]">Mobile CTR: <strong className="text-[#202124]">{totalMobCtr}%</strong></span>
                     </div>
                   )}
 
@@ -737,16 +682,13 @@ export default function Page4() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
-                          {/* 전체 선택 체크박스 */}
                           <TableHead className="w-12 text-center">
                             <button
                               onClick={toggleAll}
                               className={cn(
                                 "w-5 h-5 rounded border-2 flex items-center justify-center mx-auto transition-colors",
-                                allChecked
-                                  ? "bg-[#1A73E8] border-[#1A73E8]"
-                                  : someChecked
-                                  ? "bg-[#E8F0FE] border-[#1A73E8]"
+                                allChecked ? "bg-[#1A73E8] border-[#1A73E8]"
+                                  : someChecked ? "bg-[#E8F0FE] border-[#1A73E8]"
                                   : "border-[#DADCE0] hover:border-[#1A73E8]"
                               )}
                             >
@@ -754,10 +696,8 @@ export default function Page4() {
                                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
                                   <path
                                     d={someChecked && !allChecked ? "M2 6h8" : "M2 6l3 3 5-5"}
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    stroke="currentColor" strokeWidth="1.5"
+                                    strokeLinecap="round" strokeLinejoin="round"
                                   />
                                 </svg>
                               )}
@@ -765,12 +705,11 @@ export default function Page4() {
                           </TableHead>
                           <TableHead className="text-center font-semibold text-[#202124]">키워드</TableHead>
                           <SortableHead label="PC 월간검색" field="pcMonthlySearch" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                          <SortableHead label="모바일 월간검색" field="mobileMonthlySearch" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortableHead label="Mobile 월간검색" field="mobileMonthlySearch" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortableHead label="PC 클릭수" field="pcClicks" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortableHead label="Mobile 클릭수" field="mobileClicks" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                           <SortableHead label="PC CTR(%)" field="pcCtr" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                          <SortableHead label="모바일 CTR(%)" field="mobileCtr" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                          <TableHead className="text-center font-semibold text-[#202124]">경쟁도</TableHead>
-                          <SortableHead label="PC 평균CPC" field="pcAvgCpc" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                          <SortableHead label="모바일 평균CPC" field="mobileAvgCpc" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortableHead label="Mobile CTR(%)" field="mobileCtr" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -804,20 +743,10 @@ export default function Page4() {
                               <TableCell className="text-center font-medium text-[#202124]">{kw.keyword}</TableCell>
                               <TableCell className="text-center text-[#5F6368]">{kw.pcMonthlySearch.toLocaleString()}</TableCell>
                               <TableCell className="text-center text-[#5F6368]">{kw.mobileMonthlySearch.toLocaleString()}</TableCell>
+                              <TableCell className="text-center text-[#5F6368]">{kw.pcClicks.toLocaleString()}</TableCell>
+                              <TableCell className="text-center text-[#5F6368]">{kw.mobileClicks.toLocaleString()}</TableCell>
                               <TableCell className="text-center text-[#5F6368]">{kw.pcCtr}%</TableCell>
                               <TableCell className="text-center text-[#5F6368]">{kw.mobileCtr}%</TableCell>
-                              <TableCell className="text-center">
-                                <span className={cn(
-                                  "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                                  kw.competition === '높음' && "bg-[#FCE8E6] text-[#C5221F]",
-                                  kw.competition === '중간' && "bg-[#FEF3E2] text-[#E37400]",
-                                  kw.competition === '낮음' && "bg-[#E6F4EA] text-[#137333]",
-                                )}>
-                                  {kw.competition}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-center text-[#5F6368]">{kw.pcAvgCpc.toLocaleString()}원</TableCell>
-                              <TableCell className="text-center text-[#5F6368]">{kw.mobileAvgCpc.toLocaleString()}원</TableCell>
                             </TableRow>
                           )
                         })}
@@ -833,8 +762,7 @@ export default function Page4() {
                       onClick={() => setBrandRegisterOpen(true)}
                       className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                     >
-                      <Plus className="h-4 w-4" />
-                      견적 등록
+                      <Plus className="h-4 w-4" />견적 등록
                     </Button>
                   </div>
 
@@ -844,17 +772,16 @@ export default function Page4() {
                         <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
                           <TableHead className="text-center font-semibold text-[#202124]">No</TableHead>
                           <TableHead className="text-center font-semibold text-[#202124]">작업이름</TableHead>
-                          <TableHead className="text-center font-semibold text-[#202124]">디바이스</TableHead>
                           <TableHead className="text-center font-semibold text-[#202124]">등록시간</TableHead>
                           <TableHead className="text-center font-semibold text-[#202124]">작업자</TableHead>
                           <TableHead className="text-center font-semibold text-[#202124]">상태</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {brandQuoteData.map((row, index) => (
+                        {sortedBrandRows.map((row, index) => (
                           <TableRow
                             key={row.id}
-                            className={`hover:bg-[#F8F9FA] transition-colors ${index < brandQuoteData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                            className={`hover:bg-[#F8F9FA] transition-colors ${index < sortedBrandRows.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
                           >
                             <TableCell className="text-center text-[#5F6368]">{row.no}</TableCell>
                             <TableCell className="text-center">
@@ -869,27 +796,14 @@ export default function Page4() {
                                 <span className="font-medium text-[#202124]">{row.name}</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-center">
-                              <span className={cn(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                                row.device === 'PC' ? "bg-[#E8F0FE] text-[#1A73E8]" : "bg-[#FEF3E2] text-[#E37400]"
-                              )}>
-                                {row.device}
-                              </span>
-                            </TableCell>
                             <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
                             <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
-
-                            <StatusCell
-                              status={row.status}
-                              completedCount={row.completedCount}
-                              errorReason={row.errorReason}
-                            />
+                            <StatusCell status={row.status} completedCount={row.completedCount} errorReason={row.errorReason} />
                           </TableRow>
                         ))}
-                        {brandQuoteData.length === 0 && (
+                        {sortedBrandRows.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-12 text-[#5F6368]">
+                            <TableCell colSpan={5} className="text-center py-12 text-[#5F6368]">
                               등록된 견적이 없습니다.
                             </TableCell>
                           </TableRow>
@@ -967,10 +881,7 @@ export default function Page4() {
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-[#5F6368]">파일 업로드</label>
-              <FileUploadArea
-                file={normalQuote.file}
-                onFileChange={(f) => setNormalQuote({ ...normalQuote, file: f })}
-              />
+              <FileUploadArea file={normalQuote.file} onFileChange={(f) => setNormalQuote({ ...normalQuote, file: f })} />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-[#5F6368]">PC 목표 순위</label>
@@ -1032,10 +943,7 @@ export default function Page4() {
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-[#5F6368]">파일 업로드</label>
-              <FileUploadArea
-                file={aiQuote.file}
-                onFileChange={(f) => setAiQuote({ ...aiQuote, file: f })}
-              />
+              <FileUploadArea file={aiQuote.file} onFileChange={(f) => setAiQuote({ ...aiQuote, file: f })} />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-[#5F6368]">PC 예산(원)</label>
@@ -1115,28 +1023,11 @@ export default function Page4() {
                 className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">디바이스</label>
-              <RadioGroup
-                value={brandQuote.device}
-                onValueChange={(v) => setBrandQuote({ ...brandQuote, device: v as 'PC' | 'Mobile' })}
-                className="flex gap-6"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="PC" id="device-pc" />
-                  <Label htmlFor="device-pc" className="text-sm text-[#202124] cursor-pointer">PC</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Mobile" id="device-mobile" />
-                  <Label htmlFor="device-mobile" className="text-sm text-[#202124] cursor-pointer">Mobile</Label>
-                </div>
-              </RadioGroup>
-            </div>
           </div>
           <DialogFooter className="flex gap-3 justify-end">
             <Button
               variant="outline"
-              onClick={() => { setBrandRegisterOpen(false); setBrandQuote({ name: '', brandName: '', device: 'PC' }) }}
+              onClick={() => { setBrandRegisterOpen(false); setBrandQuote({ name: '', brandName: '' }) }}
               className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
             >취소</Button>
             <Button
@@ -1193,7 +1084,7 @@ export default function Page4() {
         </DialogContent>
       </Dialog>
 
-      {/* ── 자동 선택 다이얼로그 (ILP 배낭 알고리즘) ── */}
+      {/* ── 자동 선택 다이얼로그 (최소 검색수 기준) ── */}
       <Dialog open={autoSelectOpen} onOpenChange={setAutoSelectOpen}>
         <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
           <DialogHeader>
@@ -1201,15 +1092,15 @@ export default function Page4() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-[#5F6368]">
-              예산 내에서 월간 검색량 대비 CPC 효율이 높은 키워드를 자동으로 선택합니다.
+              입력한 검색수 이상인 키워드를 자동으로 선택합니다.
             </p>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">총 예산 (원)</label>
+              <label className="block text-sm font-medium text-[#5F6368]">최소 검색수</label>
               <Input
                 type="number"
-                placeholder="예: 5000000"
-                value={autoSelectBudget}
-                onChange={(e) => setAutoSelectBudget(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="예: 10000"
+                value={autoSelectMinSearch}
+                onChange={(e) => setAutoSelectMinSearch(e.target.value.replace(/[^0-9]/g, ''))}
                 className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
               />
             </div>
@@ -1230,21 +1121,21 @@ export default function Page4() {
                 </div>
               </RadioGroup>
             </div>
-            {autoSelectBudget && (
+            {autoSelectMinSearch && (
               <div className="px-3 py-2 bg-[#F8F9FA] rounded-xl text-xs text-[#5F6368]">
-                예산 <strong className="text-[#202124]">{parseInt(autoSelectBudget).toLocaleString()}원</strong> 내에서 검색량/CPC 효율 순으로 키워드를 선택합니다.
+                {autoSelectDevice} 월간검색수 <strong className="text-[#202124]">{parseInt(autoSelectMinSearch).toLocaleString()}</strong> 이상인 키워드를 선택합니다.
               </div>
             )}
           </div>
           <DialogFooter className="flex gap-3 justify-end">
             <Button
               variant="outline"
-              onClick={() => { setAutoSelectOpen(false); setAutoSelectBudget('') }}
+              onClick={() => { setAutoSelectOpen(false); setAutoSelectMinSearch('') }}
               className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
             >취소</Button>
             <Button
               onClick={handleAutoSelect}
-              disabled={!autoSelectBudget || parseInt(autoSelectBudget) <= 0}
+              disabled={!autoSelectMinSearch || parseInt(autoSelectMinSearch) <= 0}
               className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >자동 선택</Button>
           </DialogFooter>

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 
-const CUSTOMER_ID = '1718917'
-const ACCESS_LICENSE = '01000000008e2761ccf11872f8290d1479b4be68af1f2464e597efc637564f2a0ff5e6e864'
-const SECRET_KEY = 'AQAAAACOJ2HM8Rhy+CkNFHm0vmivBVCmjrT1SrSYwXnZuT/OMA=='
+const CUSTOMER_ID = process.env.NAVER_CUSTOMER_ID ?? ''
+const ACCESS_LICENSE = process.env.NAVER_ACCESS_LICENSE ?? ''
+const SECRET_KEY = process.env.NAVER_SECRET_KEY ?? ''
 
 function generateSignature(timestamp: number, method: string, uri: string): string {
   const message = `${timestamp}.${method}.${uri}`
@@ -14,6 +14,10 @@ function generateSignature(timestamp: number, method: string, uri: string): stri
 }
 
 export async function GET(request: NextRequest) {
+  if (!CUSTOMER_ID || !ACCESS_LICENSE || !SECRET_KEY) {
+    return NextResponse.json({ error: 'Naver API credentials not configured' }, { status: 500 })
+  }
+
   const keyword = new URL(request.url).searchParams.get('keyword') ?? ''
   const timestamp = Date.now()
   const uri = '/keywordstool'
