@@ -14,7 +14,7 @@ import {
 import { Mail, RefreshCw, Calendar, Link2, Copy, Send, Loader2, FileText, AlertCircle, CheckCircle2, Plus, Download, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type TabType = '메일 AI' | '견적 AI' | '소재 제작 AI' | '보고서 AI'
+type TabType = '메일 AI' | '검색광고 견적 AI' | '브랜드검색광고 견적 AI' | '소재 제작 AI' | '보고서 AI'
 type ToneType = '공손한' | '간결한' | '공식적인'
 type QuoteStatus = '진행중' | '완료' | '오류'
 
@@ -35,6 +35,7 @@ interface QuoteItem {
   id: string
   no: number
   name: string
+  quoteMethod: '일반' | 'AI'
   registeredAt: string
   worker: string
   status: QuoteStatus
@@ -43,6 +44,18 @@ interface QuoteItem {
   criteria: string
   pcBudget: number
   mobileBudget: number
+  completedCount?: number
+  errorReason?: string
+}
+
+interface BrandQuoteItem {
+  id: string
+  no: number
+  name: string
+  device: 'PC' | 'Mobile' | 'PC/Mobile'
+  registeredAt: string
+  worker: string
+  status: QuoteStatus
   completedCount?: number
   errorReason?: string
 }
@@ -111,12 +124,13 @@ const DUMMY_EMAILS: EmailItem[] = [
   },
 ]
 
-// 견적 더미 데이터
+// 검색광고 견적 더미 데이터
 const INITIAL_QUOTE_DATA: QuoteItem[] = [
   {
     id: 'QT001',
     no: 1,
     name: '화장품 키워드',
+    quoteMethod: '일반',
     registeredAt: '2026-02-05 14:30',
     worker: 'admin',
     status: '완료',
@@ -131,6 +145,7 @@ const INITIAL_QUOTE_DATA: QuoteItem[] = [
     id: 'QT002',
     no: 2,
     name: '스포츠용품 키워드',
+    quoteMethod: 'AI',
     registeredAt: '2026-02-05 16:00',
     worker: 'admin',
     status: '진행중',
@@ -144,6 +159,7 @@ const INITIAL_QUOTE_DATA: QuoteItem[] = [
     id: 'QT003',
     no: 3,
     name: '건강식품 키워드',
+    quoteMethod: 'AI',
     registeredAt: '2026-02-06 09:00',
     worker: 'admin',
     status: '오류',
@@ -153,6 +169,39 @@ const INITIAL_QUOTE_DATA: QuoteItem[] = [
     pcBudget: 1000000,
     mobileBudget: 1500000,
     errorReason: '규격에 맞지 않는 템플릿',
+  },
+]
+
+// 브랜드검색광고 견적 더미 데이터
+const INITIAL_BRAND_QUOTE_DATA: BrandQuoteItem[] = [
+  {
+    id: 'BQ001',
+    no: 1,
+    name: '화장품 브랜드',
+    device: 'PC/Mobile',
+    registeredAt: '2026-02-05 15:00',
+    worker: 'admin',
+    status: '완료',
+    completedCount: 80,
+  },
+  {
+    id: 'BQ002',
+    no: 2,
+    name: '스포츠 브랜드',
+    device: 'PC',
+    registeredAt: '2026-02-06 10:00',
+    worker: 'admin',
+    status: '진행중',
+  },
+  {
+    id: 'BQ003',
+    no: 3,
+    name: '식품 브랜드',
+    device: 'Mobile',
+    registeredAt: '2026-02-06 11:30',
+    worker: 'admin',
+    status: '오류',
+    errorReason: '규격에 맞지 않는 입력값',
   },
 ]
 
@@ -294,6 +343,14 @@ export default function Page4() {
     file: null as File | null,
   })
 
+  // 브랜드검색광고 견적 AI 상태
+  const [brandQuoteData, setBrandQuoteData] = useState<BrandQuoteItem[]>(INITIAL_BRAND_QUOTE_DATA)
+  const [brandRegisterOpen, setBrandRegisterOpen] = useState(false)
+  const [brandQuote, setBrandQuote] = useState({
+    name: '',
+    device: '' as 'PC' | 'Mobile' | 'PC/Mobile' | '',
+  })
+
   const selectedEmail = DUMMY_EMAILS.find(e => e.id === selectedEmailId)
 
   const handleSync = () => {
@@ -344,6 +401,7 @@ export default function Page4() {
       id: `QT${Date.now()}`,
       no: quoteData.length + 1,
       name: normalQuote.name,
+      quoteMethod: '일반',
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
@@ -367,6 +425,7 @@ export default function Page4() {
       id: `QT${Date.now()}`,
       no: quoteData.length + 1,
       name: aiQuote.name,
+      quoteMethod: 'AI',
       registeredAt: getCurrentDateTime(),
       worker: 'admin',
       status: '진행중',
@@ -380,6 +439,25 @@ export default function Page4() {
     setQuoteData([...quoteData, newItem])
     setAiQuote({ name: '', pcBudget: '', mobileBudget: '', criteria: '클릭 최대화', file: null })
     setAiRegisterOpen(false)
+  }
+
+  // 브랜드검색광고 견적 등록 핸들러
+  const handleBrandQuoteSubmit = () => {
+    if (!brandQuote.name || !brandQuote.device) return
+
+    const newItem: BrandQuoteItem = {
+      id: `BQ${Date.now()}`,
+      no: brandQuoteData.length + 1,
+      name: brandQuote.name,
+      device: brandQuote.device as 'PC' | 'Mobile' | 'PC/Mobile',
+      registeredAt: getCurrentDateTime(),
+      worker: 'admin',
+      status: '진행중',
+    }
+
+    setBrandQuoteData([...brandQuoteData, newItem])
+    setBrandQuote({ name: '', device: '' })
+    setBrandRegisterOpen(false)
   }
 
   // 등록 상세 보기
@@ -402,7 +480,7 @@ export default function Page4() {
         {/* 탭 영역 */}
         <div className="bg-white rounded-2xl shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)]">
           <nav className="flex border-b border-[#E8EAED]">
-            {(['견적 AI', '소재 제작 AI', '보고서 AI', '메일 AI'] as TabType[]).map(tab => (
+            {(['검색광고 견적 AI', '브랜드검색광고 견적 AI', '소재 제작 AI', '보고서 AI', '메일 AI'] as TabType[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -663,8 +741,8 @@ export default function Page4() {
             </div>
           )}
 
-          {/* 견적 AI 탭 */}
-          {activeTab === '견적 AI' && (
+          {/* 검색광고 견적 AI 탭 */}
+          {activeTab === '검색광고 견적 AI' && (
             <div className="p-6">
               {/* 상단 버튼 영역 */}
               <div className="flex justify-end gap-2 mb-4">
@@ -700,9 +778,15 @@ export default function Page4() {
                     <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
                       <TableHead className="text-center font-semibold text-[#202124]">No</TableHead>
                       <TableHead className="text-center font-semibold text-[#202124]">작업이름</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">견적 방식</TableHead>
                       <TableHead className="text-center font-semibold text-[#202124]">등록시간</TableHead>
                       <TableHead className="text-center font-semibold text-[#202124]">작업자</TableHead>
-                      <TableHead className="text-center font-semibold text-[#202124]">상태</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124] p-0">
+                        <div className="flex">
+                          <div className="flex-1 flex items-center justify-center py-3 border-r border-[#E8EAED]">상태</div>
+                          <div className="flex-1 flex items-center justify-center py-3">상세</div>
+                        </div>
+                      </TableHead>
                       <TableHead className="text-center font-semibold text-[#202124]">등록</TableHead>
                       <TableHead className="text-center font-semibold text-[#202124]">결과</TableHead>
                     </TableRow>
@@ -715,25 +799,35 @@ export default function Page4() {
                       >
                         <TableCell className="text-center text-[#5F6368]">{row.no}</TableCell>
                         <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                        <TableCell className="text-center">
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                            row.quoteMethod === '일반' ? "bg-[#F1F3F4] text-[#5F6368]" : "bg-[#E8F0FE] text-[#1A73E8]"
+                          )}>
+                            {row.quoteMethod === '일반' ? '일반 견적' : 'AI 견적'}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
                         <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <span
-                              className={cn(
+                        <TableCell className="p-0">
+                          <div className="flex">
+                            <div className="flex-1 flex items-center justify-center py-3 border-r border-[#E8EAED]">
+                              <span className={cn(
                                 "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
                                 row.status === '완료' && "bg-[#E6F4EA] text-[#137333]",
                                 row.status === '진행중' && "bg-[#E8F0FE] text-[#1A73E8]",
                                 row.status === '오류' && "bg-[#FCE8E6] text-[#C5221F]"
-                              )}
-                            >
-                              {row.status}
-                            </span>
-                            <span className="text-xs text-[#5F6368]">
-                              {row.status === '완료' && `${row.completedCount ?? 0}건 완료`}
-                              {row.status === '진행중' && '-'}
-                              {row.status === '오류' && (row.errorReason ?? '오류 발생')}
-                            </span>
+                              )}>
+                                {row.status}
+                              </span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center py-3 px-2">
+                              <span className="text-xs text-[#5F6368] text-center">
+                                {row.status === '완료' && `${row.completedCount ?? 0}건 완료`}
+                                {row.status === '진행중' && '-'}
+                                {row.status === '오류' && (row.errorReason ?? '오류 발생')}
+                              </span>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -760,7 +854,90 @@ export default function Page4() {
                     ))}
                     {quoteData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-[#5F6368]">
+                        <TableCell colSpan={8} className="text-center py-12 text-[#5F6368]">
+                          등록된 견적이 없습니다.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          )}
+
+          {/* 브랜드검색광고 견적 AI 탭 */}
+          {activeTab === '브랜드검색광고 견적 AI' && (
+            <div className="p-6">
+              {/* 상단 버튼 영역 */}
+              <div className="flex justify-end gap-2 mb-4">
+                <Button
+                  onClick={() => setBrandRegisterOpen(true)}
+                  className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" />
+                  견적 등록
+                </Button>
+              </div>
+
+              {/* 브랜드검색광고 견적 테이블 */}
+              <Card className="rounded-2xl border-[#E8EAED] overflow-hidden shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#F8F9FA] border-b border-[#E8EAED]">
+                      <TableHead className="text-center font-semibold text-[#202124]">No</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">작업이름</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">디바이스</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">등록시간</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124]">작업자</TableHead>
+                      <TableHead className="text-center font-semibold text-[#202124] p-0">
+                        <div className="flex">
+                          <div className="flex-1 flex items-center justify-center py-3 border-r border-[#E8EAED]">상태</div>
+                          <div className="flex-1 flex items-center justify-center py-3">상세</div>
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {brandQuoteData.map((row, index) => (
+                      <TableRow
+                        key={row.id}
+                        className={`hover:bg-[#F8F9FA] transition-colors ${index < brandQuoteData.length - 1 ? 'border-b border-[#E8EAED]' : ''}`}
+                      >
+                        <TableCell className="text-center text-[#5F6368]">{row.no}</TableCell>
+                        <TableCell className="text-center font-medium text-[#202124]">{row.name}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F1F3F4] text-[#5F6368]">
+                            {row.device}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.registeredAt}</TableCell>
+                        <TableCell className="text-center text-[#5F6368]">{row.worker}</TableCell>
+                        <TableCell className="p-0">
+                          <div className="flex">
+                            <div className="flex-1 flex items-center justify-center py-3 border-r border-[#E8EAED]">
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                row.status === '완료' && "bg-[#E6F4EA] text-[#137333]",
+                                row.status === '진행중' && "bg-[#E8F0FE] text-[#1A73E8]",
+                                row.status === '오류' && "bg-[#FCE8E6] text-[#C5221F]"
+                              )}>
+                                {row.status}
+                              </span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center py-3 px-2">
+                              <span className="text-xs text-[#5F6368] text-center">
+                                {row.status === '완료' && `${row.completedCount ?? 0}건 완료`}
+                                {row.status === '진행중' && '-'}
+                                {row.status === '오류' && (row.errorReason ?? '오류 발생')}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {brandQuoteData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-12 text-[#5F6368]">
                           등록된 견적이 없습니다.
                         </TableCell>
                       </TableRow>
@@ -1021,6 +1198,60 @@ export default function Page4() {
             <Button
               onClick={handleAiQuoteSubmit}
               disabled={!aiQuote.name}
+              className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              등록
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 브랜드검색광고 견적 등록 다이얼로그 */}
+      <Dialog open={brandRegisterOpen} onOpenChange={setBrandRegisterOpen}>
+        <DialogContent className="bg-white rounded-2xl border-[#E8EAED] shadow-[0_2px_6px_2px_rgba(60,64,67,0.15),0_8px_16px_4px_rgba(60,64,67,0.15)] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#202124] text-lg font-semibold">견적 등록</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 작업 이름 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">작업 이름</label>
+              <Input
+                placeholder="작업 이름을 입력해주세요."
+                value={brandQuote.name}
+                onChange={(e) => setBrandQuote({ ...brandQuote, name: e.target.value })}
+                className="border-[#E8EAED] rounded-xl focus:border-[#1A73E8] focus:ring-2 focus:ring-[#E8F0FE]"
+              />
+            </div>
+            {/* 디바이스 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#5F6368]">디바이스</label>
+              <Select value={brandQuote.device} onValueChange={(v) => setBrandQuote({ ...brandQuote, device: v as 'PC' | 'Mobile' | 'PC/Mobile' })}>
+                <SelectTrigger className="w-full border-[#E8EAED] rounded-xl hover:border-[#DADCE0] transition-colors">
+                  <SelectValue placeholder="디바이스 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-xl border-[#E8EAED] shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)]">
+                  <SelectItem value="PC" className="rounded-lg hover:bg-[#F8F9FA]">PC</SelectItem>
+                  <SelectItem value="Mobile" className="rounded-lg hover:bg-[#F8F9FA]">Mobile</SelectItem>
+                  <SelectItem value="PC/Mobile" className="rounded-lg hover:bg-[#F8F9FA]">PC/Mobile</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBrandRegisterOpen(false)
+                setBrandQuote({ name: '', device: '' })
+              }}
+              className="border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] transition-all duration-200"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleBrandQuoteSubmit}
+              disabled={!brandQuote.name || !brandQuote.device}
               className="bg-[#1A73E8] hover:bg-[#1557B0] text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               등록
