@@ -808,13 +808,6 @@ export default function Page4() {
                 <div>
                   <div className="flex justify-end gap-2 mb-4">
                     <Button
-                      variant="outline"
-                      onClick={handleTemplateDownload}
-                      className="gap-2 border-[#DADCE0] text-[#5F6368] rounded-xl hover:bg-[#F8F9FA] hover:border-[#1A73E8] hover:text-[#1A73E8] transition-all duration-200"
-                    >
-                      <Download className="h-4 w-4" />템플릿 다운로드
-                    </Button>
-                    <Button
                       onClick={() => setBrandRegisterOpen(true)}
                       className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
                     >
@@ -1148,10 +1141,10 @@ export default function Page4() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-[#5F6368]">
-              입력한 검색수 이상인 키워드를 자동으로 선택합니다.
+              검색 수 미만 최대 효율 발생 키워드를 자동으로 선택합니다.
             </p>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">최소 검색수</label>
+              <label className="block text-sm font-medium text-[#5F6368]">최대 검색수</label>
               <Input
                 type="number"
                 placeholder="예: 10000"
@@ -1179,7 +1172,7 @@ export default function Page4() {
             </div>
             {autoSelectMinSearch && (
               <div className="px-3 py-2 bg-[#F8F9FA] rounded-xl text-xs text-[#5F6368]">
-                {autoSelectDevice} 월간검색수 <strong className="text-[#202124]">{parseInt(autoSelectMinSearch).toLocaleString()}</strong> 이상인 키워드를 선택합니다.
+                {autoSelectDevice} 월간검색수 <strong className="text-[#202124]">{parseInt(autoSelectMinSearch).toLocaleString()}</strong> 미만 최대 효율 발생 키워드를 선택합니다.
               </div>
             )}
           </div>
