@@ -285,17 +285,17 @@ export default function Page4() {
                   <Download className="h-4 w-4" />템플릿 다운로드
                 </Button>
                 <Button
+                  onClick={() => setSearchAdRegisterOpen(true)}
+                  className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" />검색광고 견적 등록
+                </Button>
+                <Button
                   variant="outline"
                   onClick={() => setBrandSearchRegisterOpen(true)}
                   className="gap-2 border-[#1A73E8] text-[#1A73E8] rounded-xl hover:bg-[#E8F0FE] transition-all duration-200"
                 >
                   <Plus className="h-4 w-4" />브랜드검색광고 견적 등록
-                </Button>
-                <Button
-                  onClick={() => setSearchAdRegisterOpen(true)}
-                  className="gap-2 bg-[#1A73E8] hover:bg-[#1557B0] text-white font-medium px-6 rounded-xl transition-all duration-200 hover:shadow-md active:scale-[0.98]"
-                >
-                  <Plus className="h-4 w-4" />검색광고 견적 등록
                 </Button>
               </div>
 
@@ -470,6 +470,10 @@ export default function Page4() {
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="노출 최대화" id="criteria-exposure" />
                   <Label htmlFor="criteria-exposure" className="text-sm text-[#202124] cursor-pointer">노출 최대화</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="CPC 최소화" id="criteria-cpc" />
+                  <Label htmlFor="criteria-cpc" className="text-sm text-[#202124] cursor-pointer">CPC 최소화</Label>
                 </div>
               </RadioGroup>
             </div>
