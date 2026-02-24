@@ -10,7 +10,7 @@ import {
   RadioGroup, RadioGroupItem,
   Label,
 } from '@/components/ui'
-import { FileText, Plus, Download, Upload } from 'lucide-react'
+import { FileText, Plus, Download, Upload, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TabType = '광고 견적 AI' | '소재 제작 AI' | '보고서 AI' | '메일 AI'
@@ -457,7 +457,15 @@ export default function Page4() {
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#5F6368]">최적화 기준</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-sm font-medium text-[#5F6368]">최적화 기준</label>
+                <div className="relative group">
+                  <HelpCircle className="h-4 w-4 text-[#80868B] cursor-help" />
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 bg-[#202124] text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 leading-relaxed">
+                    광고비 발생이 적은 키워드가 다수 포함된 경우, &apos;클릭 최대화&apos; 방식보다 &apos;CPC 최소화&apos; 방식에서 더 높은 클릭 수의 견적이 산출될 수 있습니다.
+                  </div>
+                </div>
+              </div>
               <RadioGroup
                 value={searchAdQuote.criteria}
                 onValueChange={(v) => setSearchAdQuote({ ...searchAdQuote, criteria: v })}
